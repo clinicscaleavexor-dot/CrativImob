@@ -180,7 +180,7 @@ export default function AdminPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-white">Admin Master</h1>
-            <p className="text-white/40 text-sm">
+            <p className="text-white/60 text-sm">
               Controle os prompts de cada categoria de criativo
             </p>
           </div>
@@ -268,7 +268,7 @@ export default function AdminPage() {
             <label className="block text-sm font-medium text-white/60 mb-1.5">
               Prompt Template
             </label>
-            <p className="text-white/30 text-xs mb-2">
+            <p className="text-white/50 text-xs mb-2">
               Use {"{property_details}"}, {"{briefing}"} e {"{format}"} como
               placeholders
             </p>
@@ -325,13 +325,13 @@ export default function AdminPage() {
                   <div>
                     <h3 className="text-white font-bold">{cat.label}</h3>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-white/30 text-xs font-mono">
+                      <span className="text-white/50 text-xs font-mono">
                         {cat.slug}
                       </span>
                       {cat.description && (
                         <>
                           <span className="text-white/15">·</span>
-                          <span className="text-white/40 text-xs">
+                          <span className="text-white/60 text-xs">
                             {cat.description}
                           </span>
                         </>
@@ -371,8 +371,8 @@ export default function AdminPage() {
               {/* Prompt Editor */}
               <div className="px-6 py-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <FileText className="w-3.5 h-3.5 text-white/30" />
-                  <span className="text-xs text-white/40 font-medium uppercase tracking-wide">
+                  <FileText className="w-3.5 h-3.5 text-white/50" />
+                  <span className="text-xs text-white/60 font-medium uppercase tracking-wide">
                     Prompt Template
                   </span>
                   <span className="text-white/20 text-xs">
@@ -405,7 +405,7 @@ export default function AdminPage() {
                             return next;
                           })
                         }
-                        className="text-white/40 hover:text-white text-xs px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all"
+                        className="text-white/60 hover:text-white text-xs px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all"
                       >
                         Descartar
                       </button>
@@ -433,7 +433,7 @@ export default function AdminPage() {
       {categories.length === 0 && (
         <div className="text-center py-16">
           <Shield className="w-10 h-10 text-white/15 mx-auto mb-3" />
-          <p className="text-white/40">Nenhuma categoria de prompt encontrada</p>
+          <p className="text-white/60">Nenhuma categoria de prompt encontrada</p>
           <p className="text-white/25 text-sm mt-1">
             Clique em &quot;Nova Categoria&quot; para começar
           </p>

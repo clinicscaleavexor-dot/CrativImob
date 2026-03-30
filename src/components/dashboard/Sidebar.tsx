@@ -80,7 +80,7 @@ export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
                   ? "bg-brand-500/15 text-brand-400"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
+                  : "text-white/70 hover:text-white hover:bg-white/5"
               }`}
             >
               <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -117,14 +117,14 @@ export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
             <p className="text-white text-xs font-semibold truncate">
               {profile?.full_name ?? "Usuário"}
             </p>
-            <p className="text-white/40 text-xs truncate capitalize">
+            <p className="text-white/60 text-xs truncate capitalize">
               Plano {(profile?.plans as { name?: string } | null)?.name ?? "free"}
             </p>
           </div>
         </div>
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-2 w-full text-white/40 hover:text-white/70 text-xs px-2 py-1.5 rounded-lg hover:bg-white/5 transition-all"
+          className="flex items-center gap-2 w-full text-white/60 hover:text-white/70 text-xs px-2 py-1.5 rounded-lg hover:bg-white/5 transition-all"
         >
           <LogOut className="w-3.5 h-3.5" />
           Sair

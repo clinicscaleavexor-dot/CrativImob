@@ -263,13 +263,13 @@ function CriarPageContent() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="p-2 text-white/40 hover:text-white hover:bg-white/8 rounded-xl transition-all"
+          className="p-2 text-white/60 hover:text-white hover:bg-white/8 rounded-xl transition-all"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div>
           <h1 className="text-2xl font-black text-white">Criar Criativo</h1>
-          <p className="text-white/40 text-sm">
+          <p className="text-white/60 text-sm">
             Gere imagens profissionais com IA
           </p>
         </div>
@@ -321,7 +321,7 @@ function CriarPageContent() {
             {properties.length === 0 ? (
               <div className="text-center py-12">
                 <Building2 className="w-10 h-10 text-white/20 mx-auto mb-3" />
-                <p className="text-white/50 mb-4">Nenhum imóvel cadastrado</p>
+                <p className="text-white/70 mb-4">Nenhum imóvel cadastrado</p>
                 <a
                   href="/dashboard/imoveis"
                   className="inline-flex items-center gap-2 bg-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-600 transition-all"
@@ -349,7 +349,7 @@ function CriarPageContent() {
                           </span>
                         </div>
                         <p className="text-white font-semibold">{p.title}</p>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-white/40 text-xs">
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-white/60 text-xs">
                           {p.city && (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" /> {p.city}
@@ -389,7 +389,7 @@ function CriarPageContent() {
             <h2 className="text-lg font-bold text-white mb-1">
               Escolha o estilo do criativo
             </h2>
-            <p className="text-white/40 text-sm mb-4">
+            <p className="text-white/60 text-sm mb-4">
               Cada categoria possui um prompt especializado para gerar imagens
               únicas
             </p>
@@ -397,7 +397,7 @@ function CriarPageContent() {
             {categories.length === 0 ? (
               <div className="text-center py-12">
                 <Sparkles className="w-10 h-10 text-white/20 mx-auto mb-3" />
-                <p className="text-white/50">
+                <p className="text-white/70">
                   Nenhuma categoria disponível
                 </p>
               </div>
@@ -422,7 +422,7 @@ function CriarPageContent() {
                           {cat.label}
                         </p>
                         {cat.description && (
-                          <p className="text-white/40 text-xs mt-1 line-clamp-2">
+                          <p className="text-white/60 text-xs mt-1 line-clamp-2">
                             {cat.description}
                           </p>
                         )}
@@ -464,7 +464,7 @@ function CriarPageContent() {
                       <p className="text-white font-semibold text-sm">
                         {f.label}
                       </p>
-                      <p className="text-white/40 text-xs">{f.sublabel}</p>
+                      <p className="text-white/60 text-xs">{f.sublabel}</p>
                     </div>
                   </button>
                 ))}
@@ -484,7 +484,7 @@ function CriarPageContent() {
                     className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
                       selectedType === t.id
                         ? "border-brand-500/60 bg-brand-500/10 text-brand-400"
-                        : "border-white/8 text-white/50 hover:border-white/20 hover:text-white"
+                        : "border-white/8 text-white/70 hover:border-white/20 hover:text-white"
                     }`}
                   >
                     {t.label}
@@ -502,7 +502,7 @@ function CriarPageContent() {
               <h2 className="text-lg font-bold text-white">
                 Personalize o texto
               </h2>
-              <span className="text-xs bg-white/5 text-white/40 px-2 py-1 rounded-lg">
+              <span className="text-xs bg-white/5 text-white/60 px-2 py-1 rounded-lg">
                 Gerado automaticamente — edite como quiser
               </span>
             </div>
@@ -519,7 +519,7 @@ function CriarPageContent() {
                 placeholder="Ex: Apartamento 2 quartos em São Paulo — R$ 350.000"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
               />
-              <p className="text-white/30 text-xs mt-1 text-right">
+              <p className="text-white/50 text-xs mt-1 text-right">
                 {headline.length}/80
               </p>
             </div>
@@ -536,7 +536,7 @@ function CriarPageContent() {
                 placeholder="Ex: 3 quartos · 80m² · Jardim Paulista · Documentação ok"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all resize-none"
               />
-              <p className="text-white/30 text-xs mt-1 text-right">
+              <p className="text-white/50 text-xs mt-1 text-right">
                 {copyText.length}/200
               </p>
             </div>
@@ -558,7 +558,7 @@ function CriarPageContent() {
                     className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
                       ctaText === cta
                         ? "bg-brand-500/20 border-brand-500/50 text-brand-400"
-                        : "bg-white/5 border-white/10 text-white/50 hover:border-white/25"
+                        : "bg-white/5 border-white/10 text-white/70 hover:border-white/25"
                     }`}
                   >
                     {cta}
@@ -577,25 +577,25 @@ function CriarPageContent() {
             {/* Preview summary */}
             {selectedProperty && selectedCategory && (
               <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm">
-                <p className="text-white/40 text-xs font-medium mb-2 uppercase tracking-wide">
+                <p className="text-white/60 text-xs font-medium mb-2 uppercase tracking-wide">
                   Resumo
                 </p>
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-white/50">Imóvel</span>
+                    <span className="text-white/70">Imóvel</span>
                     <span className="text-white truncate max-w-[60%] text-right">
                       {selectedProperty.title}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/50">Categoria</span>
+                    <span className="text-white/70">Categoria</span>
                     <span className="text-white">
                       {CATEGORY_ICONS[selectedCategory.slug] ?? "📌"}{" "}
                       {selectedCategory.label}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/50">Formato</span>
+                    <span className="text-white/70">Formato</span>
                     <span className="text-white">
                       {FORMATS.find((f) => f.id === selectedFormat)?.label} —{" "}
                       {selectedFormat}
@@ -629,7 +629,7 @@ function CriarPageContent() {
                   <p className="text-white font-semibold">
                     Processando com IA...
                   </p>
-                  <p className="text-white/40 text-sm mt-1">
+                  <p className="text-white/60 text-sm mt-1">
                     Gerando 2 variações + copy · pode levar até 60 segundos
                   </p>
                 </div>
@@ -645,7 +645,7 @@ function CriarPageContent() {
                     setStep(4);
                     setGenError(null);
                   }}
-                  className="mt-4 text-sm text-white/50 hover:text-white underline"
+                  className="mt-4 text-sm text-white/70 hover:text-white underline"
                 >
                   Tentar novamente
                 </button>
@@ -655,7 +655,7 @@ function CriarPageContent() {
                 {/* Image Variations */}
                 {generatedUrls.some((u) => u) && (
                   <div>
-                    <p className="text-white/50 text-sm mb-3 font-medium">
+                    <p className="text-white/70 text-sm mb-3 font-medium">
                       2 Variações Geradas
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -707,7 +707,7 @@ function CriarPageContent() {
                             key={idx}
                             className="rounded-xl border border-white/8 bg-white/3 p-8 flex flex-col items-center justify-center text-center"
                           >
-                            <p className="text-white/30 text-sm">
+                            <p className="text-white/50 text-sm">
                               Variação {idx + 1} — falhou
                             </p>
                           </div>
@@ -721,7 +721,7 @@ function CriarPageContent() {
                 {generatedCopy && (
                   <div className="bg-white/[0.04] border border-white/10 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <p className="text-white/50 text-sm font-medium flex items-center gap-2">
+                      <p className="text-white/70 text-sm font-medium flex items-center gap-2">
                         <Pencil className="w-3.5 h-3.5" />
                         Copy para Postagem
                       </p>
@@ -759,7 +759,7 @@ function CriarPageContent() {
                     <p className="text-white font-semibold mb-1">
                       Não foi possível gerar
                     </p>
-                    <p className="text-white/40 text-sm mb-4">
+                    <p className="text-white/60 text-sm mb-4">
                       A IA não retornou resultados. Tente novamente.
                     </p>
                     <button
@@ -792,7 +792,7 @@ function CriarPageContent() {
                     setGeneratedIds([]);
                     setGenError(null);
                   }}
-                  className="flex-1 py-2.5 text-sm text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+                  className="flex-1 py-2.5 text-sm text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
                 >
                   Criar outro
                 </button>
@@ -814,7 +814,7 @@ function CriarPageContent() {
           <button
             onClick={() => step > 1 && setStep((s) => s - 1)}
             disabled={step === 1}
-            className="flex items-center gap-2 text-sm text-white/40 hover:text-white disabled:opacity-0 transition-all"
+            className="flex items-center gap-2 text-sm text-white/60 hover:text-white disabled:opacity-0 transition-all"
           >
             <ChevronLeft className="w-4 h-4" />
             Voltar

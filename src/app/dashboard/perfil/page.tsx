@@ -176,7 +176,7 @@ export default function PerfilPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-black text-white mb-1">Perfil & Marca</h1>
-        <p className="text-white/40 text-sm">Suas informações serão usadas nos criativos gerados</p>
+        <p className="text-white/60 text-sm">Suas informações serão usadas nos criativos gerados</p>
       </div>
 
       {/* Avatar */}
@@ -209,7 +209,7 @@ export default function PerfilPage() {
           </div>
           <div>
             <p className="text-white font-semibold">{fullName || "Sem nome"}</p>
-            <p className="text-white/40 text-sm">{companyName || "Sem empresa"}</p>
+            <p className="text-white/60 text-sm">{companyName || "Sem empresa"}</p>
             <button
               onClick={() => avatarInputRef.current?.click()}
               className="text-brand-400 text-xs mt-1 hover:text-brand-300 transition-colors"
@@ -314,7 +314,7 @@ export default function PerfilPage() {
               <p className="text-white/70 text-sm font-medium">
                 {logoUploading ? "Enviando..." : "Clique para fazer upload"}
               </p>
-              <p className="text-white/30 text-xs mt-0.5">PNG, JPG ou SVG · até 2MB</p>
+              <p className="text-white/50 text-xs mt-0.5">PNG, JPG ou SVG · até 2MB</p>
             </div>
             {logoUploading && <Loader2 className="w-4 h-4 text-brand-400 animate-spin ml-auto" />}
           </div>
@@ -392,7 +392,7 @@ export default function PerfilPage() {
           <FileText className="w-4 h-4" />
           Briefing da Imobiliária
         </h2>
-        <p className="text-white/30 text-xs -mt-2">
+        <p className="text-white/50 text-xs -mt-2">
           Essas informações serão usadas pela IA para personalizar seus criativos
         </p>
 

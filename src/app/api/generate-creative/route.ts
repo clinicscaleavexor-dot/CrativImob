@@ -17,6 +17,7 @@ type PropertyRow = {
   area_sqm: number | null;
   highlights: string[] | null;
   location: string | null;
+  images: string[] | null;
 };
 type ProfileBriefing = {
   company_name: string | null;
@@ -25,6 +26,7 @@ type ProfileBriefing = {
   target_audience: string | null;
   preferred_style: string | null;
   brand_colors: Record<string, string> | null;
+  company_logo_url: string | null;
 };
 type CategoryRow = {
   id: string;
@@ -33,6 +35,7 @@ type CategoryRow = {
   prompt_template: string;
 };
 type CreativeId = { id: string };
+type ImagePart = { inlineData: { mimeType: string; data: string } };
 
 // ---------- POST Handler ----------
 
@@ -86,10 +89,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Property
+    // 3. Property (now includes images)
     const { data: propertyRaw, error: propError } = await db
       .from("properties")
-      .select("id,title,type,city,state,price_cents,bedrooms,bathrooms,area_sqm,highlights,location")
+      .select("id,title,type,city,state,price_cents,bedrooms,bathrooms,area_sqm,highlights,location,images")
       .eq("id", property_id)
       .eq("user_id", user.id)
       .single();
@@ -103,11 +106,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Profile briefing
+    // 4. Profile briefing (now includes logo)
     const { data: profileRaw } = await db
       .from("profiles")
       .select(
-        "company_name,company_description,brand_personality,target_audience,preferred_style,brand_colors"
+        "company_name,company_description,brand_personality,target_audience,preferred_style,brand_colors,company_logo_url"
       )
       .eq("id", user.id)
       .single();
@@ -119,6 +122,7 @@ export async function POST(request: NextRequest) {
       target_audience: null,
       preferred_style: null,
       brand_colors: null,
+      company_logo_url: null,
     };
 
     // 5. Category prompt template
@@ -151,7 +155,18 @@ export async function POST(request: NextRequest) {
       description: `Geração de criativo: ${property.title} (${categoryData.label})`,
     });
 
-    // 7. Build prompt
+    // 7. Fetch property photo + logo as base64 for multimodal input
+    const propertyPhotoUrl = property.images?.[0] ?? null;
+    const logoUrl = profile.company_logo_url ?? null;
+
+    const [propertyPhotoPart, logoPart] = await Promise.all([
+      propertyPhotoUrl ? fetchImageAsBase64(propertyPhotoUrl) : Promise.resolve(null),
+      logoUrl ? fetchImageAsBase64(logoUrl) : Promise.resolve(null),
+    ]);
+
+    const hasPhoto = propertyPhotoPart !== null;
+
+    // 8. Build prompt
     const formatDimensions: Record<string, string> = {
       "1080x1080": "square 1080x1080 (Instagram post)",
       "1080x1920": "vertical 1080x1920 (Instagram/Facebook Stories)",
@@ -166,9 +181,11 @@ export async function POST(request: NextRequest) {
       headline: headline ?? "",
       copyText: copy_text ?? "",
       ctaText: cta_text ?? "Saiba mais",
+      hasPhoto,
+      hasLogo: logoPart !== null,
     });
 
-    // 8. Generate images + copy in parallel
+    // 9. Generate images + copy in parallel
     const geminiApiKey = process.env.GEMINI_API_KEY;
 
     if (!geminiApiKey) {
@@ -180,9 +197,13 @@ export async function POST(request: NextRequest) {
 
     const variationGroupId = crypto.randomUUID();
 
+    const imageParts: ImagePart[] = [];
+    if (propertyPhotoPart) imageParts.push(propertyPhotoPart);
+    if (logoPart) imageParts.push(logoPart);
+
     const [image1Result, image2Result, copyResult] = await Promise.allSettled([
-      callGeminiImage(geminiApiKey, compositePrompt, "Variation 1"),
-      callGeminiImage(geminiApiKey, compositePrompt, "Variation 2"),
+      callGeminiImage(geminiApiKey, compositePrompt, "Variation 1 — different layout and color treatment", imageParts),
+      callGeminiImage(geminiApiKey, compositePrompt, "Variation 2 — alternative composition and typography style", imageParts),
       callGeminiCopy(geminiApiKey, property, categoryData, profile),
     ]);
 
@@ -196,14 +217,15 @@ export async function POST(request: NextRequest) {
     if (!image1 && !image2) {
       console.error(
         "Both image generations failed:",
-        image1Result.status === "rejected" ? image1Result.reason : "ok",
-        image2Result.status === "rejected" ? image2Result.reason : "ok"
+        image1Result.status === "rejected" ? image1Result.reason : "fulfilled but null",
+        image2Result.status === "rejected" ? image2Result.reason : "fulfilled but null"
       );
     }
 
-    // 9. Upload images to Supabase Storage and create creative records
+    // 10. Upload images to Supabase Storage and create creative records
     const imageUrls: (string | null)[] = [];
     const creativeIds: string[] = [];
+    const modelUsed = "gemini-2.0-flash-exp";
 
     for (let i = 0; i < 2; i++) {
       const imageBase64 = i === 0 ? image1 : image2;
@@ -232,6 +254,7 @@ export async function POST(request: NextRequest) {
           copy_text: copy_text ?? "",
           cta_text: cta_text ?? "Saiba mais",
           image_url: imageUrl,
+          original_image_url: propertyPhotoUrl,
           ai_prompt: compositePrompt,
           generated_copy: generatedCopy,
           variation_number: i + 1,
@@ -239,7 +262,9 @@ export async function POST(request: NextRequest) {
           ai_metadata: {
             category: categoryData.slug,
             category_label: categoryData.label,
-            model: "gemini-2.0-flash-exp",
+            model: modelUsed,
+            has_photo: hasPhoto,
+            has_logo: logoPart !== null,
           },
         })
         .select("id")
@@ -273,6 +298,20 @@ export async function POST(request: NextRequest) {
 
 // ---------- Helpers ----------
 
+async function fetchImageAsBase64(url: string): Promise<ImagePart | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") ?? "image/jpeg";
+    const arrayBuf = await res.arrayBuffer();
+    const base64 = Buffer.from(arrayBuf).toString("base64");
+    return { inlineData: { mimeType: contentType, data: base64 } };
+  } catch (err) {
+    console.error("fetchImageAsBase64 failed:", url, err);
+    return null;
+  }
+}
+
 function buildCompositePrompt({
   template,
   property,
@@ -281,6 +320,8 @@ function buildCompositePrompt({
   headline,
   copyText,
   ctaText,
+  hasPhoto,
+  hasLogo,
 }: {
   template: string;
   property: PropertyRow;
@@ -289,6 +330,8 @@ function buildCompositePrompt({
   headline: string;
   copyText: string;
   ctaText: string;
+  hasPhoto: boolean;
+  hasLogo: boolean;
 }): string {
   const price = property.price_cents
     ? `R$ ${(property.price_cents / 100).toLocaleString("pt-BR")}`
@@ -337,8 +380,18 @@ function buildCompositePrompt({
     )
     .replace("{format}", format);
 
+  if (hasPhoto) {
+    prompt +=
+      "\n\nIMPORTANT: The first attached image is a REAL PHOTO of this property. Use it as the main background/hero image for the creative. Apply professional color grading, overlay the text elements (headline, price, CTA) on top with a semi-transparent overlay to ensure readability. Do NOT replace this photo with an AI-generated image — use the actual photo provided.";
+  }
+
+  if (hasLogo) {
+    prompt +=
+      "\n\nThe second attached image is the company LOGO. Place it in the bottom-right corner of the creative as a brand watermark. Keep it small (roughly 10-15% of image width), with slight transparency so it doesn't overpower the design.";
+  }
+
   prompt +=
-    " The image must be photorealistic, high resolution, professional marketing material with clean layout and bold typography. No watermarks. No blurry elements.";
+    "\n\nThe final image must be high resolution, professional marketing material with clean layout and bold typography. No watermarks other than the provided logo. No blurry elements.";
 
   return prompt;
 }
@@ -346,7 +399,8 @@ function buildCompositePrompt({
 async function callGeminiImage(
   apiKey: string,
   prompt: string,
-  variationHint: string
+  variationHint: string,
+  imageParts: ImagePart[]
 ): Promise<string | null> {
   const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -360,19 +414,35 @@ async function callGeminiImage(
 
   const fullPrompt = `${prompt}\n\nGenerate a unique creative variation (${variationHint}). Make it visually distinct from other variations while keeping the same brand and property context.`;
 
-  const result = await model.generateContent(fullPrompt);
-  const response = result.response;
+  // Build multimodal content: images first, then text prompt
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contentParts: any[] = [
+    ...imageParts,
+    { text: fullPrompt },
+  ];
 
-  const parts = response.candidates?.[0]?.content?.parts;
-  if (!parts) return null;
+  try {
+    const result = await model.generateContent(contentParts);
+    const response = result.response;
 
-  for (const part of parts) {
-    if (part.inlineData?.mimeType?.startsWith("image/")) {
-      return part.inlineData.data as string;
+    const parts = response.candidates?.[0]?.content?.parts;
+    if (!parts) {
+      console.error("callGeminiImage: no parts in response");
+      return null;
     }
-  }
 
-  return null;
+    for (const part of parts) {
+      if (part.inlineData?.mimeType?.startsWith("image/")) {
+        return part.inlineData.data as string;
+      }
+    }
+
+    console.error("callGeminiImage: response had parts but no image data");
+    return null;
+  } catch (err) {
+    console.error("callGeminiImage error:", err);
+    return null;
+  }
 }
 
 async function callGeminiCopy(

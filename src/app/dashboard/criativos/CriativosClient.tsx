@@ -52,7 +52,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.FC<{ className?
   pending: {
     label: "Pendente",
     icon: Clock,
-    color: "text-white/40 bg-white/5",
+    color: "text-white/60 bg-white/5",
   },
 };
 
@@ -90,7 +90,7 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-white mb-1">Criativos</h1>
-          <p className="text-white/40 text-sm">{stats.total} criativo{stats.total !== 1 ? "s" : ""} gerado{stats.total !== 1 ? "s" : ""}</p>
+          <p className="text-white/60 text-sm">{stats.total} criativo{stats.total !== 1 ? "s" : ""} gerado{stats.total !== 1 ? "s" : ""}</p>
         </div>
         <Link
           href="/dashboard/criar"
@@ -111,7 +111,7 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
           ].map((s) => (
             <div key={s.label} className="bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
               <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-              <p className="text-white/40 text-xs mt-0.5">{s.label}</p>
+              <p className="text-white/60 text-xs mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
@@ -121,7 +121,7 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
       {initialCreatives.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-white/30" />
+            <Filter className="w-4 h-4 text-white/50" />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -150,10 +150,10 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
       {initialCreatives.length === 0 ? (
         <div className="bg-white/[0.03] border border-white/8 border-dashed rounded-2xl p-16 text-center">
           <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-            <Images className="w-6 h-6 text-white/30" />
+            <Images className="w-6 h-6 text-white/50" />
           </div>
-          <p className="text-white/50 font-medium mb-1">Nenhum criativo gerado ainda</p>
-          <p className="text-white/30 text-sm mb-6">
+          <p className="text-white/70 font-medium mb-1">Nenhum criativo gerado ainda</p>
+          <p className="text-white/50 text-sm mb-6">
             Crie seu primeiro criativo imobiliário com inteligência artificial
           </p>
           <Link
@@ -166,7 +166,7 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-12 text-center">
-          <p className="text-white/50">Nenhum criativo com estes filtros</p>
+          <p className="text-white/70">Nenhum criativo com estes filtros</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -196,7 +196,7 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
                       {c.status === "processing" ? (
                         <>
                           <Loader2 className="w-8 h-8 text-white/20 animate-spin" />
-                          <p className="text-white/30 text-xs">Processando...</p>
+                          <p className="text-white/50 text-xs">Processando...</p>
                         </>
                       ) : (
                         <>
@@ -246,7 +246,7 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-white/30">
+                  <div className="flex items-center justify-between text-xs text-white/50">
                     <div className="flex items-center gap-1.5">
                       {c.templates?.name && (
                         <span>{c.templates.name}</span>

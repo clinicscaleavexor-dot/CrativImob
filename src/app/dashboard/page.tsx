@@ -72,7 +72,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-black text-white mb-1">
             Olá, {firstName} 👋
           </h1>
-          <p className="text-white/40 text-sm">
+          <p className="text-white/60 text-sm">
             {profile?.company_name ?? "Bem-vindo ao CriativImob"}
           </p>
         </div>
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
             <p className={`text-2xl font-black ${stat.isText ? "text-lg" : "text-white"}`}>
               {stat.value}
             </p>
-            <p className="text-white/40 text-xs mt-1">{stat.label}</p>
+            <p className="text-white/60 text-xs mt-1">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -144,7 +144,7 @@ export default async function DashboardPage() {
               <p className="text-white font-semibold text-sm">
                 Você tem apenas {balance} crédito{balance !== 1 ? "s" : ""} restante{balance !== 1 ? "s" : ""}
               </p>
-              <p className="text-white/40 text-xs">Faça upgrade para continuar gerando criativos</p>
+              <p className="text-white/60 text-xs">Faça upgrade para continuar gerando criativos</p>
             </div>
           </div>
           <Link
@@ -171,10 +171,10 @@ export default async function DashboardPage() {
         {creatives.length === 0 ? (
           <div className="bg-white/[0.03] border border-white/8 border-dashed rounded-2xl p-12 text-center">
             <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-              <ImageIcon className="w-6 h-6 text-white/30" />
+              <ImageIcon className="w-6 h-6 text-white/50" />
             </div>
-            <p className="text-white/50 mb-1 font-medium">Nenhum criativo ainda</p>
-            <p className="text-white/30 text-sm mb-6">
+            <p className="text-white/70 mb-1 font-medium">Nenhum criativo ainda</p>
+            <p className="text-white/50 text-sm mb-6">
               Crie seu primeiro criativo em menos de 2 minutos
             </p>
             <Link
@@ -210,7 +210,7 @@ export default async function DashboardPage() {
                   <p className="text-white text-sm font-medium truncate">
                     {creative.title ?? "Criativo sem título"}
                   </p>
-                  <p className="text-white/40 text-xs mt-0.5">{creative.type?.replace("_", " ")}</p>
+                  <p className="text-white/60 text-xs mt-0.5">{creative.type?.replace("_", " ")}</p>
                 </div>
               </div>
             ))}

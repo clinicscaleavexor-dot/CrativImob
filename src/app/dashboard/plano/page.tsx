@@ -71,7 +71,7 @@ export default async function PlanoPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-black text-white mb-1">Plano & Créditos</h1>
-        <p className="text-white/40 text-sm">Gerencie seu plano e acompanhe seus créditos</p>
+        <p className="text-white/60 text-sm">Gerencie seu plano e acompanhe seus créditos</p>
       </div>
 
       {/* Current Status */}
@@ -86,14 +86,14 @@ export default async function PlanoPage() {
                     ? "bg-yellow-500/15 text-yellow-400"
                     : currentPlan.name.toLowerCase().includes("basic") || currentPlan.name.toLowerCase().includes("starter")
                     ? "bg-brand-500/15 text-brand-400"
-                    : "bg-white/8 text-white/50"
+                    : "bg-white/8 text-white/70"
                 }`}
               >
                 {PLAN_ICONS[currentPlan.name.toLowerCase()] ?? <Zap className="w-5 h-5" />}
               </div>
               <div>
                 <p className="text-white font-bold text-lg">{currentPlan.name}</p>
-                <p className="text-white/40 text-sm">
+                <p className="text-white/60 text-sm">
                   {currentPlan.price_cents === 0
                     ? "Gratuito"
                     : `R$ ${(currentPlan.price_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/mês`}
@@ -102,7 +102,7 @@ export default async function PlanoPage() {
             </div>
             <div className="text-right">
               {periodEnd && (
-                <p className="text-white/40 text-sm">Renova em {periodEnd}</p>
+                <p className="text-white/60 text-sm">Renova em {periodEnd}</p>
               )}
             </div>
           </div>
@@ -114,17 +114,17 @@ export default async function PlanoPage() {
         <div className="col-span-1 bg-white/[0.03] border border-white/8 rounded-2xl p-5 text-center">
           <Zap className="w-5 h-5 text-brand-400 mx-auto mb-2" />
           <p className="text-3xl font-black text-white">{credits?.balance ?? 0}</p>
-          <p className="text-white/40 text-xs mt-1">Créditos disponíveis</p>
+          <p className="text-white/60 text-xs mt-1">Créditos disponíveis</p>
         </div>
         <div className="col-span-1 bg-white/[0.03] border border-white/8 rounded-2xl p-5 text-center">
-          <Images className="w-5 h-5 text-white/30 mx-auto mb-2" />
+          <Images className="w-5 h-5 text-white/50 mx-auto mb-2" />
           <p className="text-3xl font-black text-white">{currentPlan?.credits_per_month ?? 0}</p>
-          <p className="text-white/40 text-xs mt-1">Créditos/mês</p>
+          <p className="text-white/60 text-xs mt-1">Créditos/mês</p>
         </div>
         <div className="col-span-1 bg-white/[0.03] border border-white/8 rounded-2xl p-5 text-center">
-          <Building2 className="w-5 h-5 text-white/30 mx-auto mb-2" />
+          <Building2 className="w-5 h-5 text-white/50 mx-auto mb-2" />
           <p className="text-3xl font-black text-white">{currentPlan?.max_properties ?? 0}</p>
-          <p className="text-white/40 text-xs mt-1">Imóveis máx.</p>
+          <p className="text-white/60 text-xs mt-1">Imóveis máx.</p>
         </div>
       </div>
 
@@ -169,7 +169,7 @@ export default async function PlanoPage() {
                           minimumFractionDigits: 0,
                         })}
                       </p>
-                      <p className="text-white/40 text-sm">/mês</p>
+                      <p className="text-white/60 text-sm">/mês</p>
                     </>
                   )}
                 </div>
@@ -194,14 +194,14 @@ export default async function PlanoPage() {
                 {isCurrent ? (
                   <button
                     disabled
-                    className="w-full py-2.5 rounded-xl text-sm font-semibold bg-white/8 text-white/40 cursor-default"
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold bg-white/8 text-white/60 cursor-default"
                   >
                     Plano atual
                   </button>
                 ) : plan.price_cents === 0 ? (
                   <button
                     disabled
-                    className="w-full py-2.5 rounded-xl text-sm font-semibold bg-white/5 text-white/30 cursor-default"
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold bg-white/5 text-white/50 cursor-default"
                   >
                     Downgrade
                   </button>
@@ -235,7 +235,7 @@ export default async function PlanoPage() {
             { icon: "🔄", text: "Créditos renovam mensalmente" },
             { icon: "♾️", text: "Créditos não expiram no Pro" },
           ].map((item) => (
-            <div key={item.text} className="flex items-start gap-2 text-white/50">
+            <div key={item.text} className="flex items-start gap-2 text-white/70">
               <span className="text-lg flex-shrink-0">{item.icon}</span>
               <p>{item.text}</p>
             </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Plus,
   Building2,
@@ -17,6 +18,8 @@ import {
   Loader2,
   ChevronRight,
   X,
+  ImagePlus,
+  XCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
@@ -77,6 +80,9 @@ export default function ImoveisPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [propertyImages, setPropertyImages] = useState<string[]>([]);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [tempPropertyId, setTempPropertyId] = useState<string>(crypto.randomUUID());
 
   const supabase = createClient();
 
@@ -101,6 +107,8 @@ export default function ImoveisPage() {
   function openNew() {
     setForm({ ...emptyForm });
     setEditingId(null);
+    setPropertyImages([]);
+    setTempPropertyId(crypto.randomUUID());
     setShowModal(true);
   }
 
@@ -120,7 +128,44 @@ export default function ImoveisPage() {
       target_audience: p.target_audience ?? "familia",
     });
     setEditingId(p.id);
+    setPropertyImages(p.images ?? []);
     setShowModal(true);
+  }
+
+  async function handleImageUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const remaining = 5 - propertyImages.length;
+    const toUpload = Array.from(files).slice(0, remaining);
+    if (toUpload.length === 0) return;
+
+    setImageUploading(true);
+    const propId = editingId ?? tempPropertyId;
+    const newUrls: string[] = [];
+
+    for (const file of toUpload) {
+      if (file.size > 5 * 1024 * 1024) continue;
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${user.id}/${propId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("property-images")
+        .upload(path, file, { contentType: file.type, upsert: false });
+
+      if (!error) {
+        const { data: urlData } = supabase.storage.from("property-images").getPublicUrl(path);
+        if (urlData?.publicUrl) newUrls.push(urlData.publicUrl);
+      }
+    }
+
+    setPropertyImages((prev) => [...prev, ...newUrls]);
+    setImageUploading(false);
+  }
+
+  function removeImage(url: string) {
+    setPropertyImages((prev) => prev.filter((u) => u !== url));
   }
 
   function toggleHighlight(h: string) {
@@ -150,6 +195,7 @@ export default function ImoveisPage() {
       parking_spots: form.parking_spots ? parseInt(form.parking_spots) : null,
       highlights: form.highlights,
       target_audience: form.target_audience || null,
+      images: propertyImages.length > 0 ? propertyImages : null,
       user_id: user.id,
     };
 
@@ -188,7 +234,7 @@ export default function ImoveisPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-white mb-1">Imóveis</h1>
-          <p className="text-white/40 text-sm">{properties.length} imóvel(is) cadastrado(s)</p>
+          <p className="text-white/60 text-sm">{properties.length} imóvel(is) cadastrado(s)</p>
         </div>
         <button
           onClick={openNew}
@@ -202,7 +248,7 @@ export default function ImoveisPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
           <input
             type="text"
             value={search}
@@ -212,7 +258,7 @@ export default function ImoveisPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-white/30 flex-shrink-0" />
+          <Filter className="w-4 h-4 text-white/50 flex-shrink-0" />
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
@@ -234,12 +280,12 @@ export default function ImoveisPage() {
       ) : filtered.length === 0 ? (
         <div className="bg-white/[0.03] border border-white/8 border-dashed rounded-2xl p-16 text-center">
           <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-            <Building2 className="w-6 h-6 text-white/30" />
+            <Building2 className="w-6 h-6 text-white/50" />
           </div>
-          <p className="text-white/50 font-medium mb-1">
+          <p className="text-white/70 font-medium mb-1">
             {search || filterType !== "all" ? "Nenhum imóvel encontrado" : "Nenhum imóvel cadastrado"}
           </p>
-          <p className="text-white/30 text-sm mb-6">
+          <p className="text-white/50 text-sm mb-6">
             {search || filterType !== "all"
               ? "Tente outros filtros"
               : "Cadastre seu primeiro imóvel para começar a criar criativos"}
@@ -262,19 +308,34 @@ export default function ImoveisPage() {
               className="group bg-white/[0.04] border border-white/8 rounded-2xl p-5 hover:border-white/15 transition-all"
             >
               <div className="flex items-start justify-between gap-4">
+                {/* Thumbnail */}
+                {p.images && p.images.length > 0 ? (
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border border-white/10">
+                    <Image src={p.images[0]} alt={p.title} fill className="object-cover" unoptimized />
+                    {p.images.length > 1 && (
+                      <span className="absolute bottom-0.5 right-0.5 text-[9px] bg-black/70 text-white/80 px-1 rounded">
+                        +{p.images.length - 1}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-white/5 flex-shrink-0 flex items-center justify-center border border-white/8">
+                    <Building2 className="w-6 h-6 text-white/20" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs bg-brand-500/15 text-brand-400 px-2 py-0.5 rounded-full capitalize">
                       {p.type}
                     </span>
                     {p.target_audience && (
-                      <span className="text-xs bg-white/8 text-white/50 px-2 py-0.5 rounded-full capitalize">
+                      <span className="text-xs bg-white/8 text-white/70 px-2 py-0.5 rounded-full capitalize">
                         {p.target_audience}
                       </span>
                     )}
                   </div>
                   <h3 className="text-white font-bold truncate mb-2">{p.title}</h3>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/40 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/60 text-xs">
                     {(p.city || p.state) && (
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
@@ -305,12 +366,12 @@ export default function ImoveisPage() {
                   {p.highlights && p.highlights.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {p.highlights.slice(0, 4).map((h) => (
-                        <span key={h} className="text-xs bg-white/5 text-white/40 px-2 py-0.5 rounded-full">
+                        <span key={h} className="text-xs bg-white/5 text-white/60 px-2 py-0.5 rounded-full">
                           {h}
                         </span>
                       ))}
                       {p.highlights.length > 4 && (
-                        <span className="text-xs text-white/30">+{p.highlights.length - 4}</span>
+                        <span className="text-xs text-white/50">+{p.highlights.length - 4}</span>
                       )}
                     </div>
                   )}
@@ -328,13 +389,13 @@ export default function ImoveisPage() {
                     </Link>
                     <button
                       onClick={() => openEdit(p)}
-                      className="p-1.5 text-white/30 hover:text-white/70 hover:bg-white/8 rounded-lg transition-all"
+                      className="p-1.5 text-white/50 hover:text-white/70 hover:bg-white/8 rounded-lg transition-all"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => setDeleteId(p.id)}
-                      className="p-1.5 text-white/30 hover:text-red-400 hover:bg-red-400/8 rounded-lg transition-all"
+                      className="p-1.5 text-white/50 hover:text-red-400 hover:bg-red-400/8 rounded-lg transition-all"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -356,7 +417,7 @@ export default function ImoveisPage() {
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-white/40 hover:text-white transition-colors"
+                className="text-white/60 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -478,11 +539,69 @@ export default function ImoveisPage() {
                 ))}
               </div>
 
+              {/* Fotos do Imóvel */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  Fotos do imóvel{" "}
+                  <span className="text-white/50 font-normal">({propertyImages.length}/5)</span>
+                </label>
+
+                {propertyImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {propertyImages.map((url, idx) => (
+                      <div key={idx} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-white/10">
+                        <Image
+                          src={url}
+                          alt={`Foto ${idx + 1}`}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(url)}
+                          className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-0.5"
+                        >
+                          <XCircle className="w-4 h-4 text-red-400" />
+                        </button>
+                        {idx === 0 && (
+                          <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center bg-brand-500/80 text-white py-0.5">
+                            Principal
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {propertyImages.length < 5 && (
+                  <label className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-white/15 rounded-xl cursor-pointer hover:border-brand-500/40 hover:bg-brand-500/5 transition-all">
+                    {imageUploading ? (
+                      <Loader2 className="w-4 h-4 text-brand-400 animate-spin" />
+                    ) : (
+                      <ImagePlus className="w-4 h-4 text-white/50" />
+                    )}
+                    <span className="text-sm text-white/60">
+                      {imageUploading ? "Enviando..." : "Adicionar fotos"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleImageUpload(e.target.files)}
+                      disabled={imageUploading}
+                    />
+                  </label>
+                )}
+                <p className="text-white/50 text-xs mt-1.5">JPG, PNG ou WebP · máx. 5MB cada · A primeira foto será usada pela IA</p>
+              </div>
+
               {/* Destaques */}
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-3">
                   Destaques{" "}
-                  <span className="text-white/30 font-normal">(opcional)</span>
+                  <span className="text-white/50 font-normal">(opcional)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {HIGHLIGHTS_OPTIONS.map((h) => (
@@ -493,7 +612,7 @@ export default function ImoveisPage() {
                       className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
                         form.highlights.includes(h)
                           ? "bg-brand-500/20 border-brand-500/50 text-brand-400"
-                          : "bg-white/5 border-white/10 text-white/50 hover:border-white/25"
+                          : "bg-white/5 border-white/10 text-white/70 hover:border-white/25"
                       }`}
                     >
                       {h}
@@ -506,7 +625,7 @@ export default function ImoveisPage() {
             <div className="flex items-center justify-end gap-3 p-6 border-t border-white/8">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-5 py-2.5 rounded-xl text-sm text-white/50 hover:text-white hover:bg-white/8 transition-all"
+                className="px-5 py-2.5 rounded-xl text-sm text-white/70 hover:text-white hover:bg-white/8 transition-all"
               >
                 Cancelar
               </button>
@@ -531,13 +650,13 @@ export default function ImoveisPage() {
               <Trash2 className="w-5 h-5 text-red-400" />
             </div>
             <h3 className="text-white font-bold mb-2">Remover imóvel?</h3>
-            <p className="text-white/50 text-sm mb-6">
+            <p className="text-white/70 text-sm mb-6">
               Essa ação não pode ser desfeita. Os criativos gerados continuarão disponíveis.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm text-white/50 hover:text-white bg-white/5 hover:bg-white/10 transition-all"
+                className="flex-1 py-2.5 rounded-xl text-sm text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-all"
               >
                 Cancelar
               </button>
