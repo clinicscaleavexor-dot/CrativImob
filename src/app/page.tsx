@@ -154,44 +154,9 @@ export default function LandingPage() {
 
                 {/* The hero creative card */}
                 <div className="hero-card grain relative rounded-3xl overflow-hidden shadow-2xl" style={{width:"clamp(300px,40vw,440px)",aspectRatio:"1/1",boxShadow:"0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)"}}>
-                  {/* Night sky – São Paulo twilight */}
-                  <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, #020510 0%, #050d22 40%, #080f28 60%, #05080f 100%)"}} />
-                  {/* Stars */}
-                  {[{t:4,l:8},{t:7,l:22},{t:3,l:35},{t:9,l:48},{t:5,l:61},{t:2,l:74},{t:8,l:87},{t:11,l:15},{t:6,l:29},{t:4,l:53},{t:10,l:68},{t:7,l:82},{t:3,l:91},{t:6,l:42},{t:12,l:77}].map((s,i)=>(
-                    <div key={i} className="absolute rounded-full bg-white" style={{top:`${s.t}%`,left:`${s.l}%`,width:`${1+(i%2)}px`,height:`${1+(i%2)}px`,opacity:0.15+(i%4)*0.1}} />
-                  ))}
-                  {/* Horizon amber glow (city warmth) */}
-                  <div className="absolute" style={{bottom:"28%",left:0,right:0,height:"100px",background:"radial-gradient(ellipse at 50% 100%, rgba(255,140,20,0.22) 0%, rgba(200,80,10,0.08) 60%, transparent 100%)"}} />
-                  {/* Far buildings – small/dark */}
-                  {[{l:"0%",w:"5%",h:"18%"},{l:"5%",w:"4%",h:"24%"},{l:"9%",w:"7%",h:"16%"},{l:"16%",w:"3%",h:"28%"},{l:"19%",w:"6%",h:"15%"},{l:"25%",w:"4%",h:"22%"},{l:"29%",w:"3%",h:"18%"},{l:"32%",w:"8%",h:"32%"},{l:"40%",w:"4%",h:"17%"},{l:"44%",w:"5%",h:"25%"},{l:"49%",w:"3%",h:"15%"},{l:"52%",w:"7%",h:"29%"},{l:"59%",w:"4%",h:"19%"},{l:"63%",w:"6%",h:"23%"},{l:"69%",w:"3%",h:"17%"},{l:"72%",w:"8%",h:"26%"},{l:"80%",w:"4%",h:"20%"},{l:"84%",w:"5%",h:"16%"},{l:"89%",w:"4%",h:"24%"},{l:"93%",w:"7%",h:"18%"}].map((b,i)=>(
-                    <div key={i} className="absolute" style={{bottom:"29%",left:b.l,width:b.w,height:b.h,background:`rgba(${5+i%4},${10+i%5},${28+i%8},0.88)`}} />
-                  ))}
-                  {/* Mid-layer buildings */}
-                  {[{l:"4%",w:"9%",h:"38%"},{l:"13%",w:"5%",h:"46%"},{l:"18%",w:"12%",h:"30%"},{l:"30%",w:"4%",h:"52%"},{l:"34%",w:"7%",h:"34%"},{l:"41%",w:"5%",h:"42%"},{l:"46%",w:"9%",h:"28%"},{l:"55%",w:"5%",h:"44%"},{l:"60%",w:"8%",h:"36%"},{l:"68%",w:"4%",h:"50%"},{l:"72%",w:"7%",h:"32%"},{l:"79%",w:"9%",h:"40%"},{l:"88%",w:"5%",h:"46%"},{l:"93%",w:"7%",h:"30%"}].map((b,i)=>(
-                    <div key={i} className="absolute" style={{bottom:"29%",left:b.l,width:b.w,height:b.h,background:`rgba(${8+i%3},${14+i%5},${36+i%10},0.95)`,border:"1px solid rgba(60,80,160,0.06)"}} />
-                  ))}
-                  {/* CENTRAL TOWER — most detailed */}
-                  <div className="absolute" style={{bottom:"29%",left:"37%",width:"27%",height:"65%",background:"rgba(9,17,45,0.99)",border:"1px solid rgba(80,110,200,0.14)"}}>
-                    {[0,1,2,3,4,5,6,7].map(row=>[0,1,2,3].map(col=>(
-                      <div key={`${row}-${col}`} className="absolute" style={{width:"16%",height:"8%",top:`${5+row*11}%`,left:`${7+col*22}%`,background:(row*4+col)%7===0?"rgba(255,225,85,0.88)":(row*4+col)%7===1?"rgba(255,245,160,0.55)":(row*4+col)%7===2?"rgba(180,220,255,0.3)":(row*4+col)%7===3?"rgba(255,200,60,0.45)":"rgba(8,16,55,0.5)",borderRadius:"1px"}} />
-                    )))}
-                  </div>
-                  {/* Left secondary tower */}
-                  <div className="absolute" style={{bottom:"29%",left:"9%",width:"22%",height:"48%",background:"rgba(7,13,38,0.98)",border:"1px solid rgba(60,80,140,0.08)"}}>
-                    {[0,1,2,3,4].map(row=>[0,1,2].map(col=>(
-                      <div key={`${row}-${col}`} className="absolute" style={{width:"22%",height:"10%",top:`${10+row*17}%`,left:`${10+col*30}%`,background:(row+col)%4===0?"rgba(255,210,55,0.65)":(row+col)%4===1?"rgba(200,230,255,0.2)":"rgba(6,13,45,0.45)",borderRadius:"1px"}} />
-                    )))}
-                  </div>
-                  {/* Right sidebuilding */}
-                  <div className="absolute" style={{bottom:"29%",right:"4%",width:"19%",height:"54%",background:"rgba(8,15,40,0.98)",border:"1px solid rgba(60,80,140,0.07)"}}>
-                    {[0,1,2,3,4,5].map(row=>[0,1].map(col=>(
-                      <div key={`${row}-${col}`} className="absolute" style={{width:"28%",height:"9%",top:`${8+row*15}%`,left:`${14+col*46}%`,background:col===0?"rgba(255,215,55,0.6)":"rgba(10,22,70,0.4)",borderRadius:"1px"}} />
-                    )))}
-                  </div>
-                  {/* Ground glow line */}
-                  <div className="absolute" style={{bottom:"28.5%",left:0,right:0,height:"8px",background:"linear-gradient(to top, rgba(255,100,0,0.1), transparent)"}} />
-                  {/* Bottom gradient overlay */}
-                  <div className="absolute bottom-0 left-0 right-0" style={{height:"38%",background:"linear-gradient(to top, rgba(4,7,16,0.99) 0%, rgba(4,7,16,0.72) 55%, transparent 100%)"}} />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(2,5,16,0.25) 0%, rgba(2,5,16,0.1) 35%, rgba(2,5,16,0.55) 60%, rgba(2,5,16,0.97) 100%)"}} />
                   {/* AD CONTENT */}
                   <div className="absolute inset-0 p-5 flex flex-col justify-between z-10">
                     <div className="flex items-start justify-between">
@@ -269,15 +234,9 @@ export default function LandingPage() {
 
             {/* Card 1: Luxury Lançamento */}
             <div className="card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
-              <div className="absolute inset-0 bg-gradient-to-b from-[#070d1e] via-[#0f1e3d] to-[#060b18]" />
-              <div className="absolute bottom-0 left-[8%] w-[11%] h-[45%] bg-[#1a2d5a] border border-blue-800/30" />
-              <div className="absolute bottom-0 left-[19%] w-[7%] h-[32%] bg-[#152244]" />
-              <div className="absolute bottom-0 left-[26%] w-[22%] h-[55%] bg-[#1e3468] border border-blue-700/30">
-                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "repeating-linear-gradient(to right, transparent 0, transparent 5px, rgba(100,150,255,0.4) 5px, rgba(100,150,255,0.4) 6px), repeating-linear-gradient(to bottom, transparent 0, transparent 7px, rgba(100,150,255,0.4) 7px, rgba(100,150,255,0.4) 8px)" }} />
-              </div>
-              <div className="absolute bottom-0 right-[12%] w-[14%] h-[50%] bg-[#1a2d5a] border border-blue-800/20" />
-              <div className="absolute bottom-0 right-[4%] w-[8%] h-[35%] bg-[#12204e]" />
-              <div className="absolute bottom-0 left-0 right-0 h-[70%] bg-gradient-to-t from-[#060b18] to-transparent" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(4,8,20,0.3) 0%, rgba(4,8,20,0.15) 30%, rgba(4,8,20,0.7) 60%, rgba(4,8,20,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-1.5">
@@ -302,11 +261,9 @@ export default function LandingPage() {
 
             {/* Card 2: Beach Terrenos */}
             <div className="card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
-              <div className="absolute inset-0 bg-gradient-to-b from-[#0ea5c9] via-[#0369a1] to-[#7c4f1a]" />
-              <div className="absolute top-[30%] left-0 right-0 h-px bg-white/25" />
-              <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-gradient-to-t from-[#78350f] to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 h-[65%] bg-gradient-to-t from-[#431407]/90 to-transparent" />
-              <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(5,20,30,0.2) 0%, rgba(5,20,30,0.1) 25%, rgba(15,10,5,0.65) 60%, rgba(15,10,5,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-1.5">
@@ -333,15 +290,9 @@ export default function LandingPage() {
 
             {/* Card 3: Saia do Aluguel */}
             <div className="card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
-              <div className="absolute inset-0 bg-gradient-to-br from-[#052e16] via-[#14532d] to-[#064e3b]" />
-              {/* Building windows */}
-              <div className="absolute top-[12%] left-1/2 -translate-x-1/2 w-[55%] h-[45%] bg-[#166534]/30 border border-white/5">
-                {[0,1,2].map(row=>[0,1,2,3].map(col=>(
-                  <div key={`${row}-${col}`} className="absolute w-[18%] h-[24%] rounded-sm"
-                    style={{ top:`${14+row*30}%`, left:`${7+col*24}%`, background: (col+row)%2===0 ? "rgba(253,224,71,0.5)" : "rgba(255,255,255,0.06)" }} />
-                )))}
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-[65%] bg-gradient-to-t from-[#021a0e] to-transparent" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://images.unsplash.com/photo-1574362848149-11496d93a7c7?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(2,15,6,0.25) 0%, rgba(2,15,6,0.1) 25%, rgba(2,15,6,0.7) 60%, rgba(2,15,6,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-1.5">
@@ -375,13 +326,9 @@ export default function LandingPage() {
 
             {/* Card 4: Stories - Investimento */}
             <div className="col-span-12 sm:col-span-4 md:col-span-3 card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "9/16" }}>
-              <div className="absolute inset-0 bg-gradient-to-b from-[#431407] via-[#7c2d12] to-[#1c0a00]" />
-              <div className="absolute bottom-[42%] left-0 right-0 flex items-end justify-center gap-1 px-6 h-[20%]">
-                {[40,65,55,80,70,95,88].map((h,i)=>(
-                  <div key={i} className="flex-1 rounded-t-sm" style={{ height:`${h}%`, background:`rgba(251,191,36,${0.3+i*0.1})` }} />
-                ))}
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-[55%] bg-gradient-to-t from-[#0d0600] to-transparent" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(30,10,0,0.3) 0%, rgba(30,10,0,0.15) 30%, rgba(10,5,0,0.75) 60%, rgba(10,5,0,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -406,21 +353,9 @@ export default function LandingPage() {
 
             {/* Card 5: Banner 16:9 Comercial */}
             <div className="col-span-12 sm:col-span-8 md:col-span-5 card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
-              <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#111827] to-[#0a0a0a]" />
-              {/* City silhouette */}
-              <div className="absolute bottom-0 left-0 right-0 h-[55%]">
-                {[
-                  {l:"2%",w:"5%",h:"50%"},{l:"7%",w:"3%",h:"70%"},{l:"10%",w:"9%",h:"38%"},
-                  {l:"19%",w:"4%",h:"82%"},{l:"23%",w:"11%",h:"95%"},{l:"34%",w:"5%",h:"58%"},
-                  {l:"39%",w:"7%",h:"72%"},{l:"46%",w:"4%",h:"48%"},{l:"50%",w:"8%",h:"78%"},
-                  {l:"58%",w:"5%",h:"62%"},{l:"63%",w:"9%",h:"52%"},{l:"72%",w:"4%",h:"68%"},{l:"76%",w:"6%",h:"42%"},
-                  {l:"82%",w:"8%",h:"60%"},{l:"90%",w:"5%",h:"74%"},{l:"95%",w:"4%",h:"44%"}
-                ].map((b,i)=>(
-                  <div key={i} className="absolute bottom-0" style={{ left:b.l, width:b.w, height:b.h, background:`rgba(${18+i*2},${25+i*2},${45+i*3},0.95)`, borderLeft:"1px solid rgba(80,100,160,0.08)" }} />
-                ))}
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-[72%] bg-gradient-to-t from-[#020408] to-transparent" />
-              <div className="absolute bottom-[18%] left-1/2 -translate-x-1/2 w-32 h-16 bg-blue-500/15 rounded-full blur-2xl" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(2,4,8,0.35) 0%, rgba(2,4,8,0.15) 25%, rgba(2,4,8,0.7) 60%, rgba(2,4,8,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-1.5">
@@ -449,18 +384,9 @@ export default function LandingPage() {
 
             {/* Card 6: Beach Resort */}
             <div className="col-span-12 sm:col-span-12 md:col-span-4 card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
-              <div className="absolute inset-0 bg-gradient-to-b from-[#0c4a6e] via-[#0e7490] to-[#155e75]" />
-              <div className="absolute top-[35%] left-0 right-0 h-px bg-white/25" />
-              <div className="absolute top-[24%] left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-white/25 blur-lg" />
-              <div className="absolute top-[24%] left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white/50" />
-              {/* Sun reflection strip on water */}
-              <div className="absolute top-[36%] left-1/2 -translate-x-1/2 w-10 h-[12%] bg-white/8 blur-sm" />
-              <div className="absolute bottom-0 left-0 right-0 h-[22%] bg-gradient-to-t from-[#92400e]/60 to-transparent" />
-              {/* Beach villas */}
-              <div className="absolute bottom-[20%] left-[12%] w-[18%] h-[18%] bg-white/18 border border-white/25 rounded-t-sm" />
-              <div className="absolute bottom-[20%] left-[18%] w-[20%] h-[23%] bg-white/22 border border-white/25 rounded-t-sm" />
-              <div className="absolute bottom-[20%] right-[15%] w-[22%] h-[20%] bg-white/18 border border-white/20 rounded-t-sm" />
-              <div className="absolute bottom-0 left-0 right-0 h-[65%] bg-gradient-to-t from-[#042f2e]/92 to-transparent" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(4,15,14,0.2) 0%, rgba(4,15,14,0.1) 25%, rgba(4,15,14,0.65) 60%, rgba(4,15,14,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-1.5">
