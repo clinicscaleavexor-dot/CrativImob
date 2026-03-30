@@ -17,6 +17,7 @@ export type Database = {
           created_at: string
           cta_text: string | null
           format: string
+          generated_copy: string | null
           headline: string | null
           id: string
           image_url: string | null
@@ -27,6 +28,8 @@ export type Database = {
           title: string | null
           type: string
           user_id: string
+          variation_group_id: string | null
+          variation_number: number
         }
         Insert: {
           ai_metadata?: Json | null
@@ -35,6 +38,7 @@ export type Database = {
           created_at?: string
           cta_text?: string | null
           format?: string
+          generated_copy?: string | null
           headline?: string | null
           id?: string
           image_url?: string | null
@@ -45,6 +49,8 @@ export type Database = {
           title?: string | null
           type: string
           user_id: string
+          variation_group_id?: string | null
+          variation_number?: number
         }
         Update: {
           ai_metadata?: Json | null
@@ -53,6 +59,7 @@ export type Database = {
           created_at?: string
           cta_text?: string | null
           format?: string
+          generated_copy?: string | null
           headline?: string | null
           id?: string
           image_url?: string | null
@@ -63,6 +70,8 @@ export type Database = {
           title?: string | null
           type?: string
           user_id?: string
+          variation_group_id?: string | null
+          variation_number?: number
         }
         Relationships: []
       }
@@ -154,6 +163,8 @@ export type Database = {
         Row: {
           avatar_url: string | null
           brand_colors: Json | null
+          brand_personality: string | null
+          company_description: string | null
           company_logo_url: string | null
           company_name: string | null
           created_at: string
@@ -162,11 +173,15 @@ export type Database = {
           id: string
           phone: string | null
           plan_id: string | null
+          preferred_style: string | null
+          target_audience: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           brand_colors?: Json | null
+          brand_personality?: string | null
+          company_description?: string | null
           company_logo_url?: string | null
           company_name?: string | null
           created_at?: string
@@ -175,11 +190,15 @@ export type Database = {
           id: string
           phone?: string | null
           plan_id?: string | null
+          preferred_style?: string | null
+          target_audience?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           brand_colors?: Json | null
+          brand_personality?: string | null
+          company_description?: string | null
           company_logo_url?: string | null
           company_name?: string | null
           created_at?: string
@@ -188,6 +207,8 @@ export type Database = {
           id?: string
           phone?: string | null
           plan_id?: string | null
+          preferred_style?: string | null
+          target_audience?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -285,6 +306,39 @@ export type Database = {
           plan_id?: string
           status?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      prompt_categories: {
+        Row: {
+          id: string
+          slug: string
+          label: string
+          description: string | null
+          prompt_template: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          label: string
+          description?: string | null
+          prompt_template: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          label?: string
+          description?: string | null
+          prompt_template?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }

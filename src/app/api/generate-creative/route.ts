@@ -1,37 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Explicit types to avoid postgrest-js GenericTable resolution issues
+// ---------- Types ----------
+
 type CreditsRow = { balance: number };
 type PropertyRow = {
   id: string;
   title: string;
   type: string;
   city: string | null;
+  state: string | null;
   price_cents: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  area_sqm: number | null;
+  highlights: string[] | null;
+  location: string | null;
 };
-type TemplateRow = {
+type ProfileBriefing = {
+  company_name: string | null;
+  company_description: string | null;
+  brand_personality: string | null;
+  target_audience: string | null;
+  preferred_style: string | null;
+  brand_colors: Record<string, string> | null;
+};
+type CategoryRow = {
   id: string;
-  name: string;
-  config: Record<string, unknown> | null;
+  slug: string;
+  label: string;
+  prompt_template: string;
 };
 type CreativeId = { id: string };
+
+// ---------- POST Handler ----------
 
 export async function POST(request: NextRequest) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const body = (await request.json()) as Record<string, any>;
-    const { property_id, template_id, format, creative_type, headline, copy_text, cta_text } = body;
+    const {
+      property_id,
+      category,
+      format,
+      creative_type,
+      headline,
+      copy_text,
+      cta_text,
+    } = body;
 
-    if (!property_id || !template_id || !format) {
-      return NextResponse.json({ error: "Parâmetros obrigatórios ausentes" }, { status: 400 });
+    if (!property_id || !category || !format) {
+      return NextResponse.json(
+        { error: "Parâmetros obrigatórios ausentes (property_id, category, format)" },
+        { status: 400 }
+      );
     }
 
     const supabase = await createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any;
 
-    // Verificar autenticação
+    // 1. Auth
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -40,7 +70,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    // Verificar créditos disponíveis
+    // 2. Credits
     const { data: creditsRaw } = await db
       .from("credits")
       .select("balance")
@@ -50,13 +80,16 @@ export async function POST(request: NextRequest) {
     const creditsRow = creditsRaw as CreditsRow | null;
 
     if (!creditsRow || creditsRow.balance < 1) {
-      return NextResponse.json({ error: "Créditos insuficientes" }, { status: 402 });
+      return NextResponse.json(
+        { error: "Créditos insuficientes" },
+        { status: 402 }
+      );
     }
 
-    // Buscar dados do imóvel
+    // 3. Property
     const { data: propertyRaw, error: propError } = await db
       .from("properties")
-      .select("id,title,type,city,price_cents")
+      .select("id,title,type,city,state,price_cents,bedrooms,bathrooms,area_sqm,highlights,location")
       .eq("id", property_id)
       .eq("user_id", user.id)
       .single();
@@ -64,184 +97,364 @@ export async function POST(request: NextRequest) {
     const property = propertyRaw as PropertyRow | null;
 
     if (propError || !property) {
-      return NextResponse.json({ error: "Imóvel não encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Imóvel não encontrado" },
+        { status: 404 }
+      );
     }
 
-    // Buscar template
-    const { data: templateRaw, error: tplError } = await db
-      .from("templates")
-      .select("id,name,config")
-      .eq("id", template_id)
+    // 4. Profile briefing
+    const { data: profileRaw } = await db
+      .from("profiles")
+      .select(
+        "company_name,company_description,brand_personality,target_audience,preferred_style,brand_colors"
+      )
+      .eq("id", user.id)
       .single();
 
-    const template = templateRaw as TemplateRow | null;
+    const profile = (profileRaw as ProfileBriefing | null) ?? {
+      company_name: null,
+      company_description: null,
+      brand_personality: null,
+      target_audience: null,
+      preferred_style: null,
+      brand_colors: null,
+    };
 
-    if (tplError || !template) {
-      return NextResponse.json({ error: "Template não encontrado" }, { status: 404 });
-    }
-
-    // Criar registro de creative (status: processing) — usa db (any) para bypass de tipos
-    const { data: creativeRaw, error: createError } = await db
-      .from("creatives")
-      .insert({
-        user_id: user.id,
-        property_id,
-        template_id,
-        format,
-        type: creative_type ?? "post",
-        status: "processing",
-        headline: headline ?? "",
-        copy_text: copy_text ?? "",
-        cta_text: cta_text ?? "Saiba mais",
-      })
-      .select("id")
+    // 5. Category prompt template
+    const { data: categoryRaw, error: catError } = await db
+      .from("prompt_categories")
+      .select("id,slug,label,prompt_template")
+      .eq("slug", category)
+      .eq("is_active", true)
       .single();
 
-    const creative = creativeRaw as CreativeId | null;
+    const categoryData = categoryRaw as CategoryRow | null;
 
-    if (createError || !creative) {
-      return NextResponse.json({ error: "Erro ao criar criativo" }, { status: 500 });
+    if (catError || !categoryData) {
+      return NextResponse.json(
+        { error: "Categoria não encontrada" },
+        { status: 404 }
+      );
     }
 
-    // Debitar 1 crédito
-    await db.from("credits").update({ balance: creditsRow.balance - 1 }).eq("user_id", user.id);
+    // 6. Debit 1 credit (1 credit = 2 variations)
+    await db
+      .from("credits")
+      .update({ balance: creditsRow.balance - 1 })
+      .eq("user_id", user.id);
 
-    // Registrar transação de crédito
     await db.from("credits_transactions").insert({
       user_id: user.id,
       amount: -1,
       type: "debit",
-      description: `Geração de criativo: ${property.title}`,
+      description: `Geração de criativo: ${property.title} (${categoryData.label})`,
     });
 
-    // Montar prompt para geração de imagem
+    // 7. Build prompt
     const formatDimensions: Record<string, string> = {
-      "1080x1080": "square 1080x1080",
-      "1080x1920": "vertical stories 1080x1920",
-      "1200x628": "horizontal banner 1200x628",
+      "1080x1080": "square 1080x1080 (Instagram post)",
+      "1080x1920": "vertical 1080x1920 (Instagram/Facebook Stories)",
+      "1200x628": "horizontal 1200x628 (Facebook/Google Ads banner)",
     };
 
-    const promptText = buildPrompt({
+    const compositePrompt = buildCompositePrompt({
+      template: categoryData.prompt_template,
       property,
-      template,
+      profile,
       format: formatDimensions[format] ?? format,
       headline: headline ?? "",
-      copy_text: copy_text ?? "",
-      cta_text: cta_text ?? "Saiba mais",
+      copyText: copy_text ?? "",
+      ctaText: cta_text ?? "Saiba mais",
     });
 
-    // Tentar chamar Banana.dev se API key configurada
-    const bananaApiKey = process.env.BANANA_API_KEY;
-    let imageUrl: string | null = null;
+    // 8. Generate images + copy in parallel
+    const geminiApiKey = process.env.GEMINI_API_KEY;
 
-    if (bananaApiKey) {
-      try {
-        imageUrl = await callBananaDev(bananaApiKey, promptText, format);
-      } catch (err) {
-        console.error("Banana.dev error:", err);
-      }
+    if (!geminiApiKey) {
+      return NextResponse.json(
+        { error: "Chave da API de IA não configurada" },
+        { status: 500 }
+      );
     }
 
-    // Atualizar creative com resultado
-    await db.from("creatives").update({
-      status: imageUrl ? "completed" : "failed",
-      image_url: imageUrl ?? null,
-      ai_prompt: promptText,
-    }).eq("id", creative.id);
+    const variationGroupId = crypto.randomUUID();
+
+    const [image1Result, image2Result, copyResult] = await Promise.allSettled([
+      callGeminiImage(geminiApiKey, compositePrompt, "Variation 1"),
+      callGeminiImage(geminiApiKey, compositePrompt, "Variation 2"),
+      callGeminiCopy(geminiApiKey, property, categoryData, profile),
+    ]);
+
+    const image1 =
+      image1Result.status === "fulfilled" ? image1Result.value : null;
+    const image2 =
+      image2Result.status === "fulfilled" ? image2Result.value : null;
+    const generatedCopy =
+      copyResult.status === "fulfilled" ? copyResult.value : null;
+
+    if (!image1 && !image2) {
+      console.error(
+        "Both image generations failed:",
+        image1Result.status === "rejected" ? image1Result.reason : "ok",
+        image2Result.status === "rejected" ? image2Result.reason : "ok"
+      );
+    }
+
+    // 9. Upload images to Supabase Storage and create creative records
+    const imageUrls: (string | null)[] = [];
+    const creativeIds: string[] = [];
+
+    for (let i = 0; i < 2; i++) {
+      const imageBase64 = i === 0 ? image1 : image2;
+      let imageUrl: string | null = null;
+
+      if (imageBase64) {
+        imageUrl = await uploadToStorage(
+          db,
+          user.id,
+          variationGroupId,
+          i + 1,
+          imageBase64
+        );
+      }
+
+      const { data: creativeRaw, error: createError } = await db
+        .from("creatives")
+        .insert({
+          user_id: user.id,
+          property_id,
+          template_id: null,
+          format,
+          type: creative_type ?? "post",
+          status: imageUrl ? "completed" : "failed",
+          headline: headline ?? "",
+          copy_text: copy_text ?? "",
+          cta_text: cta_text ?? "Saiba mais",
+          image_url: imageUrl,
+          ai_prompt: compositePrompt,
+          generated_copy: generatedCopy,
+          variation_number: i + 1,
+          variation_group_id: variationGroupId,
+          ai_metadata: {
+            category: categoryData.slug,
+            category_label: categoryData.label,
+            model: "gemini-2.0-flash-exp",
+          },
+        })
+        .select("id")
+        .single();
+
+      const creative = creativeRaw as CreativeId | null;
+
+      if (!createError && creative) {
+        creativeIds.push(creative.id);
+      }
+
+      imageUrls.push(imageUrl);
+    }
 
     return NextResponse.json({
       success: true,
-      creative_id: creative.id,
-      image_url: imageUrl,
-      status: imageUrl ? "completed" : "failed",
+      creative_ids: creativeIds,
+      image_urls: imageUrls,
+      generated_copy: generatedCopy,
+      variation_group_id: variationGroupId,
+      status: imageUrls.some((u) => u !== null) ? "completed" : "failed",
     });
   } catch (err) {
     console.error("generate-creative error:", err);
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
   }
 }
 
-function buildPrompt({
-  property,
+// ---------- Helpers ----------
+
+function buildCompositePrompt({
   template,
+  property,
+  profile,
   format,
   headline,
-  copy_text,
-  cta_text,
+  copyText,
+  ctaText,
 }: {
-  property: Record<string, unknown>;
-  template: Record<string, unknown>;
+  template: string;
+  property: PropertyRow;
+  profile: ProfileBriefing;
   format: string;
   headline: string;
-  copy_text: string;
-  cta_text: string;
+  copyText: string;
+  ctaText: string;
 }): string {
-  const style = (template.config as Record<string, unknown>)?.style ?? template.name ?? "modern real estate";
-  const propType = property.type ?? "property";
-  const city = property.city ?? "";
   const price = property.price_cents
-    ? `R$ ${(Number(property.price_cents) / 100).toLocaleString("pt-BR")}`
+    ? `R$ ${(property.price_cents / 100).toLocaleString("pt-BR")}`
     : "";
 
-  return `Professional real estate advertisement creative, ${format} format.
-Style: ${style}
-Property: ${propType}${city ? ` in ${city}` : ""}${price ? `, ${price}` : ""}
-Headline: ${headline}
-${copy_text ? `Copy: ${copy_text}` : ""}
-CTA: ${cta_text}
-High quality, photorealistic, professional marketing material, clean layout, bold typography.`;
+  const propertyParts = [
+    `Property type: ${property.type}`,
+    property.city ? `City: ${property.city}` : "",
+    property.state ? `State: ${property.state}` : "",
+    price ? `Price: ${price}` : "",
+    property.bedrooms ? `Bedrooms: ${property.bedrooms}` : "",
+    property.bathrooms ? `Bathrooms: ${property.bathrooms}` : "",
+    property.area_sqm ? `Area: ${property.area_sqm}m²` : "",
+    property.highlights?.length
+      ? `Highlights: ${property.highlights.join(", ")}`
+      : "",
+    headline ? `Headline text: "${headline}"` : "",
+    copyText ? `Description: "${copyText}"` : "",
+    ctaText ? `CTA button: "${ctaText}"` : "",
+  ]
+    .filter(Boolean)
+    .join(". ");
+
+  const briefingParts = [
+    profile.company_name ? `Company: ${profile.company_name}` : "",
+    profile.company_description ? `About: ${profile.company_description}` : "",
+    profile.brand_personality
+      ? `Brand personality: ${profile.brand_personality}`
+      : "",
+    profile.target_audience
+      ? `Target audience: ${profile.target_audience}`
+      : "",
+    profile.preferred_style ? `Visual style: ${profile.preferred_style}` : "",
+    profile.brand_colors
+      ? `Brand colors: primary ${(profile.brand_colors as Record<string, string>).primary ?? "#2563eb"}, secondary ${(profile.brand_colors as Record<string, string>).secondary ?? "#0f172a"}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(". ");
+
+  let prompt = template
+    .replace("{property_details}", propertyParts)
+    .replace(
+      "{briefing}",
+      briefingParts || "Modern professional real estate brand"
+    )
+    .replace("{format}", format);
+
+  prompt +=
+    " The image must be photorealistic, high resolution, professional marketing material with clean layout and bold typography. No watermarks. No blurry elements.";
+
+  return prompt;
 }
 
-async function callBananaDev(
+async function callGeminiImage(
   apiKey: string,
   prompt: string,
-  format: string
+  variationHint: string
 ): Promise<string | null> {
-  const dimensions: Record<string, { width: number; height: number }> = {
-    "1080x1080": { width: 1080, height: 1080 },
-    "1080x1920": { width: 1080, height: 1920 },
-    "1200x628": { width: 1200, height: 628 },
-  };
+  const genAI = new GoogleGenerativeAI(apiKey);
 
-  const size = dimensions[format] ?? { width: 1080, height: 1080 };
-
-  const response = await fetch("https://api.banana.dev/v1/run/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash-exp",
+    generationConfig: {
+      // @ts-expect-error — responseModalities supported by API but not yet in SDK types
+      responseModalities: ["IMAGE", "TEXT"],
     },
-    body: JSON.stringify({
-      modelKey: process.env.BANANA_MODEL_KEY ?? "stable-diffusion-xl",
-      modelInputs: {
-        prompt,
-        negative_prompt: "blurry, low quality, text errors, watermark",
-        width: size.width,
-        height: size.height,
-        num_inference_steps: 30,
-        guidance_scale: 7.5,
-      },
-    }),
   });
 
-  if (!response.ok) {
-    throw new Error(`Banana.dev returned ${response.status}`);
-  }
+  const fullPrompt = `${prompt}\n\nGenerate a unique creative variation (${variationHint}). Make it visually distinct from other variations while keeping the same brand and property context.`;
 
-  const data = (await response.json()) as {
-    modelOutputs?: Array<{ image_base64?: string; image?: string }>;
-  };
+  const result = await model.generateContent(fullPrompt);
+  const response = result.response;
 
-  const output = data.modelOutputs?.[0];
-  if (!output) return null;
+  const parts = response.candidates?.[0]?.content?.parts;
+  if (!parts) return null;
 
-  // Retorna base64 data URL ou URL direta
-  if (output.image_base64) {
-    return `data:image/png;base64,${output.image_base64}`;
-  }
-  if (output.image) {
-    return output.image;
+  for (const part of parts) {
+    if (part.inlineData?.mimeType?.startsWith("image/")) {
+      return part.inlineData.data as string;
+    }
   }
 
   return null;
+}
+
+async function callGeminiCopy(
+  apiKey: string,
+  property: PropertyRow,
+  category: CategoryRow,
+  profile: ProfileBriefing
+): Promise<string | null> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+  });
+
+  const price = property.price_cents
+    ? `R$ ${(property.price_cents / 100).toLocaleString("pt-BR")}`
+    : "";
+
+  const prompt = `Você é um copywriter especialista em marketing imobiliário brasileiro.
+Crie uma copy para postagem em redes sociais (Instagram/Facebook) para o seguinte imóvel:
+
+Tipo: ${property.type}
+Título: ${property.title}
+${property.city ? `Cidade: ${property.city}` : ""}
+${property.state ? `Estado: ${property.state}` : ""}
+${price ? `Preço: ${price}` : ""}
+${property.bedrooms ? `Quartos: ${property.bedrooms}` : ""}
+${property.bathrooms ? `Banheiros: ${property.bathrooms}` : ""}
+${property.area_sqm ? `Área: ${property.area_sqm}m²` : ""}
+${property.highlights?.length ? `Diferenciais: ${property.highlights.join(", ")}` : ""}
+
+Categoria/Estilo: ${category.label}
+${profile.company_name ? `Imobiliária: ${profile.company_name}` : ""}
+${profile.brand_personality ? `Tom da marca: ${profile.brand_personality}` : ""}
+${profile.target_audience ? `Público-alvo: ${profile.target_audience}` : ""}
+
+Regras:
+- Escreva em português brasileiro
+- Use emojis relevantes (🏠 🌊 🏢 🌴 etc)
+- Inclua 3-5 hashtags relevantes no final
+- Seja persuasivo mas profissional
+- Máximo 300 caracteres no corpo principal (sem contar hashtags)
+- Inclua um CTA (chamada para ação) no final antes das hashtags
+- Formato: texto principal + linha em branco + CTA + linha em branco + hashtags`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+
+  return response.text() || null;
+}
+
+async function uploadToStorage(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  groupId: string,
+  variationNumber: number,
+  base64Data: string
+): Promise<string | null> {
+  try {
+    const buffer = Buffer.from(base64Data, "base64");
+    const path = `${userId}/${groupId}_v${variationNumber}.png`;
+
+    const { error } = await supabase.storage
+      .from("creatives")
+      .upload(path, buffer, {
+        contentType: "image/png",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Storage upload error:", error);
+      return `data:image/png;base64,${base64Data}`;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("creatives")
+      .getPublicUrl(path);
+
+    return urlData?.publicUrl ?? `data:image/png;base64,${base64Data}`;
+  } catch (err) {
+    console.error("Upload error:", err);
+    return `data:image/png;base64,${base64Data}`;
+  }
 }

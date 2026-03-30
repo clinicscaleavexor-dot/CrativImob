@@ -11,6 +11,10 @@ import {
   Loader2,
   CheckCircle2,
   Camera,
+  FileText,
+  Target,
+  Sparkles,
+  Eye,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/database";
@@ -35,6 +39,12 @@ export default function PerfilPage() {
   const [phone, setPhone] = useState("");
   const [creci, setCreci] = useState("");
   const [brandColors, setBrandColors] = useState<BrandColors>(DEFAULT_COLORS);
+
+  // Briefing fields
+  const [companyDescription, setCompanyDescription] = useState("");
+  const [brandPersonality, setBrandPersonality] = useState("");
+  const [targetAudience, setTargetAudience] = useState("");
+  const [preferredStyle, setPreferredStyle] = useState("");
 
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
@@ -66,6 +76,10 @@ export default function PerfilPage() {
         if (colors?.primary) {
           setBrandColors({ primary: colors.primary, secondary: colors.secondary ?? DEFAULT_COLORS.secondary });
         }
+        setCompanyDescription(data.company_description ?? "");
+        setBrandPersonality(data.brand_personality ?? "");
+        setTargetAudience(data.target_audience ?? "");
+        setPreferredStyle(data.preferred_style ?? "");
       }
 
       setLoading(false);
@@ -87,6 +101,10 @@ export default function PerfilPage() {
         phone: phone || null,
         creci: creci || null,
         brand_colors: brandColors,
+        company_description: companyDescription || null,
+        brand_personality: brandPersonality || null,
+        target_audience: targetAudience || null,
+        preferred_style: preferredStyle || null,
       })
       .eq("id", user.id);
 
@@ -365,6 +383,74 @@ export default function PerfilPage() {
           style={{ background: `linear-gradient(135deg, ${brandColors.primary}, ${brandColors.secondary})` }}
         >
           <p className="text-white font-bold drop-shadow text-sm">Preview da marca</p>
+        </div>
+      </div>
+
+      {/* Briefing da Imobiliária */}
+      <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wide flex items-center gap-2">
+          <FileText className="w-4 h-4" />
+          Briefing da Imobiliária
+        </h2>
+        <p className="text-white/30 text-xs -mt-2">
+          Essas informações serão usadas pela IA para personalizar seus criativos
+        </p>
+
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            <div className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> Sobre a imobiliária</div>
+          </label>
+          <textarea
+            value={companyDescription}
+            onChange={(e) => setCompanyDescription(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Descreva sua imobiliária: diferenciais, foco de atuação, região, história..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all resize-none"
+          />
+          <p className="text-white/20 text-xs mt-1 text-right">{companyDescription.length}/500</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            <div className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Personalidade da marca</div>
+          </label>
+          <input
+            type="text"
+            value={brandPersonality}
+            onChange={(e) => setBrandPersonality(e.target.value)}
+            maxLength={200}
+            placeholder="ex: Sofisticada, moderna, acessível, acolhedora, premium..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            <div className="flex items-center gap-1.5"><Target className="w-3.5 h-3.5" /> Público-alvo</div>
+          </label>
+          <input
+            type="text"
+            value={targetAudience}
+            onChange={(e) => setTargetAudience(e.target.value)}
+            maxLength={200}
+            placeholder="ex: Investidores, famílias classe A, jovens profissionais, aposentados..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            <div className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> Estilo visual preferido</div>
+          </label>
+          <input
+            type="text"
+            value={preferredStyle}
+            onChange={(e) => setPreferredStyle(e.target.value)}
+            maxLength={200}
+            placeholder="ex: Minimalista, editorial luxo, vibrante e colorido, clean e moderno..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
+          />
         </div>
       </div>
 

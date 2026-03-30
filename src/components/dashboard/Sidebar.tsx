@@ -10,6 +10,7 @@ import {
   CreditCard,
   Plus,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -29,9 +30,10 @@ interface SidebarProps {
     avatar_url?: string | null;
     plans?: { name?: string } | null;
   } | null;
+  userRole?: string | null;
 }
 
-export default function DashboardSidebar({ profile }: SidebarProps) {
+export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -86,6 +88,21 @@ export default function DashboardSidebar({ profile }: SidebarProps) {
             </Link>
           );
         })}
+
+        {/* Admin Link */}
+        {userRole === "admin" && (
+          <Link
+            href="/dashboard/admin"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mt-2 border-t border-white/5 pt-3 ${
+              pathname.startsWith("/dashboard/admin")
+                ? "bg-amber-500/15 text-amber-400"
+                : "text-amber-500/50 hover:text-amber-400 hover:bg-amber-500/10"
+            }`}
+          >
+            <Shield className="w-4 h-4 flex-shrink-0" />
+            Admin Master
+          </Link>
+        )}
       </nav>
 
       {/* User */}

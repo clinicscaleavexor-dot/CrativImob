@@ -46,10 +46,11 @@ export default async function DashboardLayout({
 
   const profile = profileData ? { ...profileData, plans: { name: planName } } : null;
   const credits = creditsData;
+  const userRole = (user.user_metadata?.role as string) ?? null;
 
   return (
     <div className="min-h-screen bg-[#060b14] flex">
-      <DashboardSidebar profile={profile} />
+      <DashboardSidebar profile={profile} userRole={userRole} />
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardTopbar
           user={user}
