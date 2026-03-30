@@ -1,10 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
-import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
-
-type CookieOption = Partial<ResponseCookie>;
-type CookieToSet = { name: string; value: string; options?: CookieOption };
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -17,10 +13,10 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet: CookieToSet[]) {
+        setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options as Record<string, unknown>)
             );
           } catch {
             // Server component — ignorar
@@ -42,10 +38,10 @@ export async function createServiceClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet: CookieToSet[]) {
+        setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options as Record<string, unknown>)
             );
           } catch {
             // Server component — ignorar
