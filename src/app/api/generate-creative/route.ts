@@ -423,53 +423,79 @@ function buildCompositePrompt({
   return prompt;
 }
 
+const IMAGE_MODELS = [
+  "gemini-2.0-flash-exp-image-generation",
+  "gemini-2.5-flash-preview-image-generation",
+];
+
 async function callGeminiImage(
   apiKey: string,
   prompt: string,
   variationHint: string,
   imageParts: ImagePart[]
 ): Promise<string | null> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-image",
-    generationConfig: {
-      // @ts-expect-error — responseModalities supported by API but not yet in SDK types
-      responseModalities: ["TEXT", "IMAGE"],
-    },
-  });
-
   const fullPrompt = `${prompt}\n\nGenerate a unique creative variation (${variationHint}). Make it visually distinct from other variations while keeping the same brand and property context.`;
 
-  // Build multimodal content: images first, then text prompt
+  // Build multimodal content parts: images first, then text
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const contentParts: any[] = [
-    ...imageParts,
+  const parts: any[] = [
+    ...imageParts.map((ip) => ({ inlineData: ip.inlineData })),
     { text: fullPrompt },
   ];
 
-  try {
-    const result = await model.generateContent(contentParts);
-    const response = result.response;
+  const requestBody = {
+    contents: [{ role: "user", parts }],
+    generationConfig: {
+      responseModalities: ["IMAGE", "TEXT"],
+    },
+  };
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (!parts) {
-      console.error("callGeminiImage: no parts in response");
-      return null;
-    }
+  let lastError: string | null = null;
 
-    for (const part of parts) {
-      if (part.inlineData?.mimeType?.startsWith("image/")) {
-        return part.inlineData.data as string;
+  for (const modelName of IMAGE_MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+    try {
+      console.log(`callGeminiImage: trying model ${modelName}`);
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(50000),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error(`callGeminiImage ${modelName} HTTP ${res.status}:`, errText);
+        lastError = `${modelName} HTTP ${res.status}: ${errText.slice(0, 200)}`;
+        continue;
       }
-    }
 
-    console.error("callGeminiImage: response had parts but no image data");
-    return null;
-  } catch (err) {
-    console.error("callGeminiImage error:", err);
-    return null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const json: any = await res.json();
+      const candidates = json.candidates;
+      if (!candidates?.[0]?.content?.parts) {
+        console.error(`callGeminiImage ${modelName}: no parts in response`, JSON.stringify(json).slice(0, 500));
+        lastError = `${modelName}: no parts in response`;
+        continue;
+      }
+
+      for (const part of candidates[0].content.parts) {
+        if (part.inlineData?.mimeType?.startsWith("image/")) {
+          console.log(`callGeminiImage: success with model ${modelName}`);
+          return part.inlineData.data as string;
+        }
+      }
+
+      console.error(`callGeminiImage ${modelName}: response had parts but no image data`);
+      lastError = `${modelName}: no image in response parts`;
+    } catch (err) {
+      console.error(`callGeminiImage ${modelName} error:`, err);
+      lastError = `${modelName}: ${String(err)}`;
+    }
   }
+
+  throw new Error(lastError ?? "All image models failed");
 }
 
 async function callGeminiCopy(
@@ -481,7 +507,7 @@ async function callGeminiCopy(
   const genAI = new GoogleGenerativeAI(apiKey);
 
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
   });
 
   const price = property.price_cents
