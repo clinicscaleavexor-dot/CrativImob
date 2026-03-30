@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Extend Vercel serverless function timeout to 60s for AI image generation
+export const maxDuration = 60;
+
 // ---------- Types ----------
 
 type CreditsRow = { balance: number };
@@ -201,31 +204,55 @@ export async function POST(request: NextRequest) {
     if (propertyPhotoPart) imageParts.push(propertyPhotoPart);
     if (logoPart) imageParts.push(logoPart);
 
-    const [image1Result, image2Result, copyResult] = await Promise.allSettled([
-      callGeminiImage(geminiApiKey, compositePrompt, "Variation 1 — different layout and color treatment", imageParts),
-      callGeminiImage(geminiApiKey, compositePrompt, "Variation 2 — alternative composition and typography style", imageParts),
+    // Generate sequentially to avoid rate-limit issues with the image model,
+    // then fetch copy in parallel with the second image generation.
+    let image1: string | null = null;
+    let image2: string | null = null;
+    let generatedCopy: string | null = null;
+    let imageGenError: string | null = null;
+
+    try {
+      image1 = await callGeminiImage(
+        geminiApiKey,
+        compositePrompt,
+        "Variation 1 — different layout and color treatment",
+        imageParts
+      );
+    } catch (err) {
+      imageGenError = String(err);
+      console.error("Image generation 1 failed:", err);
+    }
+
+    const [image2Result, copyResult] = await Promise.allSettled([
+      callGeminiImage(
+        geminiApiKey,
+        compositePrompt,
+        "Variation 2 — alternative composition and typography style",
+        imageParts
+      ),
       callGeminiCopy(geminiApiKey, property, categoryData, profile),
     ]);
 
-    const image1 =
-      image1Result.status === "fulfilled" ? image1Result.value : null;
-    const image2 =
-      image2Result.status === "fulfilled" ? image2Result.value : null;
-    const generatedCopy =
-      copyResult.status === "fulfilled" ? copyResult.value : null;
+    image2 = image2Result.status === "fulfilled" ? image2Result.value : null;
+    generatedCopy = copyResult.status === "fulfilled" ? copyResult.value : null;
+
+    if (image2Result.status === "rejected") {
+      imageGenError = imageGenError ?? String(image2Result.reason);
+      console.error("Image generation 2 failed:", image2Result.reason);
+    }
 
     if (!image1 && !image2) {
-      console.error(
-        "Both image generations failed:",
-        image1Result.status === "rejected" ? image1Result.reason : "fulfilled but null",
-        image2Result.status === "rejected" ? image2Result.reason : "fulfilled but null"
+      console.error("Both image generations failed. Last error:", imageGenError);
+      return NextResponse.json(
+        { error: `Falha na geração de imagem pela IA: ${imageGenError ?? "sem imagem retornada"}` },
+        { status: 500 }
       );
     }
 
     // 10. Upload images to Supabase Storage and create creative records
     const imageUrls: (string | null)[] = [];
     const creativeIds: string[] = [];
-    const modelUsed = "gemini-2.0-flash-exp";
+    const modelUsed = "gemini-2.5-flash-image";
 
     for (let i = 0; i < 2; i++) {
       const imageBase64 = i === 0 ? image1 : image2;
@@ -405,10 +432,10 @@ async function callGeminiImage(
   const genAI = new GoogleGenerativeAI(apiKey);
 
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-exp",
+    model: "gemini-2.5-flash-image",
     generationConfig: {
       // @ts-expect-error — responseModalities supported by API but not yet in SDK types
-      responseModalities: ["IMAGE", "TEXT"],
+      responseModalities: ["TEXT", "IMAGE"],
     },
   });
 
