@@ -1,0 +1,339 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  public: {
+    Tables: {
+      creatives: {
+        Row: {
+          ai_metadata: Json | null
+          ai_prompt: string | null
+          copy_text: string | null
+          created_at: string
+          cta_text: string | null
+          format: string
+          headline: string | null
+          id: string
+          image_url: string | null
+          original_image_url: string | null
+          property_id: string | null
+          status: string
+          template_id: string | null
+          title: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          ai_metadata?: Json | null
+          ai_prompt?: string | null
+          copy_text?: string | null
+          created_at?: string
+          cta_text?: string | null
+          format?: string
+          headline?: string | null
+          id?: string
+          image_url?: string | null
+          original_image_url?: string | null
+          property_id?: string | null
+          status?: string
+          template_id?: string | null
+          title?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          ai_metadata?: Json | null
+          ai_prompt?: string | null
+          copy_text?: string | null
+          created_at?: string
+          cta_text?: string | null
+          format?: string
+          headline?: string | null
+          id?: string
+          image_url?: string | null
+          original_image_url?: string | null
+          property_id?: string | null
+          status?: string
+          template_id?: string | null
+          title?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credits: {
+        Row: {
+          balance: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credits_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      plans: {
+        Row: {
+          created_at: string
+          credits_per_month: number
+          features: Json
+          id: string
+          is_active: boolean
+          max_properties: number
+          name: string
+          price_cents: number
+        }
+        Insert: {
+          created_at?: string
+          credits_per_month?: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          max_properties?: number
+          name: string
+          price_cents?: number
+        }
+        Update: {
+          created_at?: string
+          credits_per_month?: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          max_properties?: number
+          name?: string
+          price_cents?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          brand_colors: Json | null
+          company_logo_url: string | null
+          company_name: string | null
+          created_at: string
+          creci: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          plan_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          brand_colors?: Json | null
+          company_logo_url?: string | null
+          company_name?: string | null
+          created_at?: string
+          creci?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          plan_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          brand_colors?: Json | null
+          company_logo_url?: string | null
+          company_name?: string | null
+          created_at?: string
+          creci?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          plan_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          area_sqm: number | null
+          bathrooms: number | null
+          bedrooms: number | null
+          city: string | null
+          created_at: string
+          highlights: string[] | null
+          id: string
+          images: string[] | null
+          is_active: boolean
+          location: string | null
+          parking_spots: number | null
+          price_cents: number
+          state: string | null
+          target_audience: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area_sqm?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
+          created_at?: string
+          highlights?: string[] | null
+          id?: string
+          images?: string[] | null
+          is_active?: boolean
+          location?: string | null
+          parking_spots?: number | null
+          price_cents?: number
+          state?: string | null
+          target_audience?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area_sqm?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
+          created_at?: string
+          highlights?: string[] | null
+          id?: string
+          images?: string[] | null
+          is_active?: boolean
+          location?: string | null
+          parking_spots?: number | null
+          price_cents?: number
+          state?: string | null
+          target_audience?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          external_subscription_id: string | null
+          id: string
+          plan_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          external_subscription_id?: string | null
+          id?: string
+          plan_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          external_subscription_id?: string | null
+          id?: string
+          plan_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      templates: {
+        Row: {
+          category: string
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          preview_url: string | null
+          type: string
+        }
+        Insert: {
+          category: string
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          preview_url?: string | null
+          type: string
+        }
+        Update: {
+          category?: string
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          preview_url?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: Record<never, never>
+    Functions: Record<never, never>
+    Enums: Record<never, never>
+    CompositeTypes: Record<never, never>
+  }
+}
+
+export type Tables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Row"]
+
+export type TablesInsert<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Insert"]
+
+export type TablesUpdate<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Update"]
