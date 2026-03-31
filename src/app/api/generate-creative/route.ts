@@ -229,12 +229,17 @@ export async function POST(request: NextRequest) {
       console.error("AI image generation failed:", aiImageResult.reason);
     }
 
-    if (!image1) {
-      console.error("AI image generation failed. Error:", imageGenError);
+    // If AI failed but property has additional photos, continue with mockups only
+    const hasAdditionalPhotos = (property.images?.length ?? 0) > 1;
+    if (!image1 && !hasAdditionalPhotos) {
+      console.error("AI image generation failed and no additional photos for mockups. Error:", imageGenError);
       return NextResponse.json(
         { error: `Falha na geração de imagem pela IA: ${imageGenError ?? "sem imagem retornada"}` },
         { status: 500 }
       );
+    }
+    if (!image1) {
+      console.warn("AI image generation failed but continuing with mockups. Error:", imageGenError);
     }
 
     // Generate mockups for additional labeled photos (photos index 1+)

@@ -630,25 +630,100 @@ function CriarPageContent() {
                     Processando com IA...
                   </p>
                   <p className="text-white/60 text-sm mt-1">
-                    Gerando 2 variações + copy · pode levar até 60 segundos
+                    Gerando imagem IA + mockups · pode levar até 60 segundos
                   </p>
                 </div>
               </div>
             ) : genError ? (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 text-center">
-                <p className="text-red-400 font-medium mb-1">
-                  Erro na geração
-                </p>
-                <p className="text-red-400/70 text-sm">{genError}</p>
-                <button
-                  onClick={() => {
-                    setStep(4);
-                    setGenError(null);
-                  }}
-                  className="mt-4 text-sm text-white/70 hover:text-white underline"
-                >
-                  Tentar novamente
-                </button>
+              <div className="space-y-6">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 text-center">
+                  <p className="text-red-400 font-medium mb-1">
+                    Erro na geração da imagem IA
+                  </p>
+                  <p className="text-red-400/70 text-sm">{genError}</p>
+                  <button
+                    onClick={() => {
+                      setStep(4);
+                      setGenError(null);
+                    }}
+                    className="mt-4 text-sm text-white/70 hover:text-white underline"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+
+                {/* Still show mockups even when AI failed */}
+                {generatedUrls.some((u) => u) && (
+                  <div>
+                    <p className="text-white/70 text-sm mb-3 font-medium">
+                      {generatedUrls.filter((u) => u).length} Mockup{generatedUrls.filter((u) => u).length !== 1 ? "s" : ""} Gerado{generatedUrls.filter((u) => u).length !== 1 ? "s" : ""}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {generatedUrls.map((url, idx) =>
+                        url ? (
+                          <div key={idx} className="space-y-3">
+                            <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                              <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-lg font-medium z-10">
+                                Mockup {idx + 1}
+                              </div>
+                              <Image
+                                src={url}
+                                alt={`Mockup ${idx + 1}`}
+                                width={540}
+                                height={540}
+                                className="w-full object-contain max-h-[400px]"
+                                unoptimized={url.startsWith("data:")}
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <a
+                                href={url}
+                                download={`mockup-${idx + 1}.png`}
+                                className="flex-1 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-xl font-semibold text-xs transition-all"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                Baixar
+                              </a>
+                            </div>
+                          </div>
+                        ) : null
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Generated Copy */}
+                {generatedCopy && (
+                  <div className="bg-white/[0.04] border border-white/10 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-white/70 text-sm font-medium flex items-center gap-2">
+                        <Pencil className="w-3.5 h-3.5" />
+                        Copy para Postagem
+                      </p>
+                      <button
+                        onClick={handleCopyToClipboard}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          copiedToClipboard
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-white/8 hover:bg-white/15 text-white/60 hover:text-white"
+                        }`}
+                      >
+                        {copiedToClipboard ? (
+                          <>
+                            <Check className="w-3 h-3" /> Copiado!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" /> Copiar
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <pre className="text-white/80 text-sm whitespace-pre-wrap font-sans leading-relaxed">
+                      {generatedCopy}
+                    </pre>
+                  </div>
+                )}
               </div>
             ) : (
               <>
@@ -656,7 +731,7 @@ function CriarPageContent() {
                 {generatedUrls.some((u) => u) && (
                   <div>
                     <p className="text-white/70 text-sm mb-3 font-medium">
-                      2 Variações Geradas
+                      {generatedUrls.filter((u) => u).length} Criativo{generatedUrls.filter((u) => u).length !== 1 ? "s" : ""} Gerado{generatedUrls.filter((u) => u).length !== 1 ? "s" : ""}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {generatedUrls.map((url, idx) =>

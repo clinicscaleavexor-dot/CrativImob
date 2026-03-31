@@ -436,7 +436,7 @@ export default function ImoveisPage() {
       {/* Modal Cadastrar/Editar */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-8 px-4">
-          <div className="w-full max-w-2xl bg-[#0d1520] border border-white/10 rounded-2xl shadow-2xl">
+          <div className="w-full max-w-2xl bg-[#141f30] border border-white/10 rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-white/8">
               <h2 className="text-lg font-bold text-white">
                 {editingId ? "Editar imóvel" : "Novo imóvel"}
@@ -604,7 +604,7 @@ export default function ImoveisPage() {
                               newLabels[idx] = e.target.value;
                               setImageLabels(newLabels);
                             }}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-brand-500/60 transition-all"
+                            className="w-full bg-[#1a2536] border border-white/15 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-brand-500/60 transition-all"
                           >
                             <option value="">— Identificar cômodo —</option>
                             {ROOM_LABELS.map((l) => (
@@ -695,7 +695,7 @@ export default function ImoveisPage() {
       {/* Modal Confirmar Delete */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-          <div className="w-full max-w-sm bg-[#0d1520] border border-white/10 rounded-2xl p-6 text-center">
+          <div className="w-full max-w-sm bg-[#141f30] border border-white/10 rounded-2xl p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-5 h-5 text-red-400" />
             </div>

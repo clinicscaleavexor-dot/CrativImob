@@ -49,7 +49,7 @@ export default async function DashboardLayout({
   const userRole = (user.user_metadata?.role as string) ?? null;
 
   return (
-    <div className="min-h-screen bg-[#060b14] flex">
+    <div className="min-h-screen bg-[#0f1729] flex">
       <DashboardSidebar profile={profile} userRole={userRole} />
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardTopbar

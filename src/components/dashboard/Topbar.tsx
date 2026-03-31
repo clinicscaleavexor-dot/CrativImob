@@ -13,7 +13,7 @@ interface TopbarProps {
 
 export default function DashboardTopbar({ credits }: TopbarProps) {
   return (
-    <header className="h-14 border-b border-white/5 bg-white/[0.02] flex items-center justify-between px-6 flex-shrink-0">
+    <header className="h-14 border-b border-white/8 bg-white/[0.04] flex items-center justify-between px-6 flex-shrink-0">
       <div />
       <div className="flex items-center gap-4">
         {/* Créditos */}

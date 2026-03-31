@@ -45,7 +45,7 @@ export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
   }
 
   return (
-    <aside className="hidden md:flex w-60 flex-shrink-0 flex-col bg-white/[0.02] border-r border-white/5 min-h-screen">
+    <aside className="hidden md:flex w-60 flex-shrink-0 flex-col bg-white/[0.04] border-r border-white/8 min-h-screen">
       {/* Logo */}
       <div className="p-5 border-b border-white/5">
         <Link href="/dashboard" className="flex items-center gap-2">

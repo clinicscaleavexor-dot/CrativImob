@@ -23,6 +23,11 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+select option {
+  background-color: #1a2536;
+  color: #e2e8f0;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
