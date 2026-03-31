@@ -125,14 +125,15 @@ export default function PerfilPage() {
       .from("brand-assets")
       .upload(path, file, { upsert: true });
 
-    if (!error) {
+    if (error) {
+      alert(`Erro ao enviar foto: ${error.message}`);
+    } else {
       const { data: urlData } = supabase.storage.from("brand-assets").getPublicUrl(path);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from("profiles")
         .update({ avatar_url: urlData.publicUrl })
         .eq("id", user.id);
-
       setProfile((prev) => prev ? { ...prev, avatar_url: urlData.publicUrl } : prev);
     }
     setAvatarUploading(false);
@@ -150,14 +151,15 @@ export default function PerfilPage() {
       .from("brand-assets")
       .upload(path, file, { upsert: true });
 
-    if (!error) {
+    if (error) {
+      alert(`Erro ao enviar logo: ${error.message}`);
+    } else {
       const { data: urlData } = supabase.storage.from("brand-assets").getPublicUrl(path);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from("profiles")
         .update({ company_logo_url: urlData.publicUrl })
         .eq("id", user.id);
-
       setProfile((prev) => prev ? { ...prev, company_logo_url: urlData.publicUrl } : prev);
     }
     setLogoUploading(false);
