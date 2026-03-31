@@ -20,6 +20,7 @@ import {
   X,
   ImagePlus,
   XCircle,
+  Tag,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
@@ -55,6 +56,24 @@ const STATES_BR = [
   "MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
 ];
 
+const ROOM_LABELS = [
+  "Fachada",
+  "Sala de estar",
+  "Sala de jantar",
+  "Cozinha",
+  "Quarto",
+  "Suíte",
+  "Banheiro",
+  "Varanda",
+  "Área de lazer",
+  "Garagem",
+  "Quintal",
+  "Área de serviço",
+  "Escritório",
+  "Vista",
+  "Outro",
+];
+
 const emptyForm = {
   title: "",
   type: "apartamento",
@@ -81,6 +100,7 @@ export default function ImoveisPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [propertyImages, setPropertyImages] = useState<string[]>([]);
+  const [imageLabels, setImageLabels] = useState<string[]>([]);
   const [imageUploading, setImageUploading] = useState(false);
   const [tempPropertyId, setTempPropertyId] = useState<string>(crypto.randomUUID());
 
@@ -108,6 +128,7 @@ export default function ImoveisPage() {
     setForm({ ...emptyForm });
     setEditingId(null);
     setPropertyImages([]);
+    setImageLabels([]);
     setTempPropertyId(crypto.randomUUID());
     setShowModal(true);
   }
@@ -129,6 +150,7 @@ export default function ImoveisPage() {
     });
     setEditingId(p.id);
     setPropertyImages(p.images ?? []);
+    setImageLabels((p as unknown as { image_labels: string[] | null }).image_labels ?? []);
     setShowModal(true);
   }
 
@@ -161,11 +183,14 @@ export default function ImoveisPage() {
     }
 
     setPropertyImages((prev) => [...prev, ...newUrls]);
+    setImageLabels((prev) => [...prev, ...newUrls.map(() => "")]);
     setImageUploading(false);
   }
 
   function removeImage(url: string) {
+    const idx = propertyImages.indexOf(url);
     setPropertyImages((prev) => prev.filter((u) => u !== url));
+    if (idx >= 0) setImageLabels((prev) => prev.filter((_, i) => i !== idx));
   }
 
   function toggleHighlight(h: string) {
@@ -196,6 +221,7 @@ export default function ImoveisPage() {
       highlights: form.highlights,
       target_audience: form.target_audience || null,
       images: propertyImages.length > 0 ? propertyImages : null,
+      image_labels: imageLabels.length > 0 ? imageLabels : null,
       user_id: user.id,
     };
 
@@ -547,28 +573,52 @@ export default function ImoveisPage() {
                 </label>
 
                 {propertyImages.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
+                  <div className="space-y-2 mb-3">
                     {propertyImages.map((url, idx) => (
-                      <div key={idx} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-white/10">
-                        <Image
-                          src={url}
-                          alt={`Foto ${idx + 1}`}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
+                      <div key={idx} className="flex items-center gap-3 bg-white/[0.03] border border-white/8 rounded-xl p-2">
+                        <div className="relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border border-white/10">
+                          <Image
+                            src={url}
+                            alt={`Foto ${idx + 1}`}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                          {idx === 0 && (
+                            <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center bg-brand-500/80 text-white py-0.5">
+                              Principal
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Tag className="w-3 h-3 text-white/40 flex-shrink-0" />
+                            <span className="text-xs text-white/50">
+                              {idx === 0 ? "Foto principal (usada pela IA)" : `Foto ${idx + 1}`}
+                            </span>
+                          </div>
+                          <select
+                            value={imageLabels[idx] ?? ""}
+                            onChange={(e) => {
+                              const newLabels = [...imageLabels];
+                              newLabels[idx] = e.target.value;
+                              setImageLabels(newLabels);
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-brand-500/60 transition-all"
+                          >
+                            <option value="">— Identificar cômodo —</option>
+                            {ROOM_LABELS.map((l) => (
+                              <option key={l} value={l}>{l}</option>
+                            ))}
+                          </select>
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeImage(url)}
-                          className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-0.5"
+                          className="p-1 text-white/30 hover:text-red-400 transition-colors flex-shrink-0"
                         >
-                          <XCircle className="w-4 h-4 text-red-400" />
+                          <XCircle className="w-4 h-4" />
                         </button>
-                        {idx === 0 && (
-                          <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center bg-brand-500/80 text-white py-0.5">
-                            Principal
-                          </span>
-                        )}
                       </div>
                     ))}
                   </div>

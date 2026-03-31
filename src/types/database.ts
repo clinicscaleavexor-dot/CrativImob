@@ -222,6 +222,7 @@ export type Database = {
           created_at: string
           highlights: string[] | null
           id: string
+          image_labels: string[] | null
           images: string[] | null
           is_active: boolean
           location: string | null
@@ -242,6 +243,7 @@ export type Database = {
           created_at?: string
           highlights?: string[] | null
           id?: string
+          image_labels?: string[] | null
           images?: string[] | null
           is_active?: boolean
           location?: string | null
@@ -262,6 +264,7 @@ export type Database = {
           created_at?: string
           highlights?: string[] | null
           id?: string
+          image_labels?: string[] | null
           images?: string[] | null
           is_active?: boolean
           location?: string | null

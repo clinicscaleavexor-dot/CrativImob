@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateMockup } from "@/lib/make-mockup";
 
 // Extend Vercel serverless function timeout to 60s for AI image generation
 export const maxDuration = 60;
@@ -21,6 +22,7 @@ type PropertyRow = {
   highlights: string[] | null;
   location: string | null;
   images: string[] | null;
+  image_labels: string[] | null;
 };
 type ProfileBriefing = {
   company_name: string | null;
@@ -92,10 +94,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Property (now includes images)
+    // 3. Property (includes images and labels)
     const { data: propertyRaw, error: propError } = await db
       .from("properties")
-      .select("id,title,type,city,state,price_cents,bedrooms,bathrooms,area_sqm,highlights,location,images")
+      .select("id,title,type,city,state,price_cents,bedrooms,bathrooms,area_sqm,highlights,location,images,image_labels")
       .eq("id", property_id)
       .eq("user_id", user.id)
       .single();
@@ -204,58 +206,71 @@ export async function POST(request: NextRequest) {
     if (propertyPhotoPart) imageParts.push(propertyPhotoPart);
     if (logoPart) imageParts.push(logoPart);
 
-    // Generate sequentially to avoid rate-limit issues with the image model,
-    // then fetch copy in parallel with the second image generation.
+    // Generate 1 AI image (primary creative) + copy in parallel
     let image1: string | null = null;
-    let image2: string | null = null;
     let generatedCopy: string | null = null;
     let imageGenError: string | null = null;
 
-    try {
-      image1 = await callGeminiImage(
-        geminiApiKey,
-        compositePrompt,
-        "Variation 1 — different layout and color treatment",
-        imageParts
-      );
-    } catch (err) {
-      imageGenError = String(err);
-      console.error("Image generation 1 failed:", err);
-    }
-
-    const [image2Result, copyResult] = await Promise.allSettled([
+    const [aiImageResult, copyResult] = await Promise.allSettled([
       callGeminiImage(
         geminiApiKey,
         compositePrompt,
-        "Variation 2 — alternative composition and typography style",
+        "Professional marketing creative with clean layout",
         imageParts
       ),
       callGeminiCopy(geminiApiKey, property, categoryData, profile),
     ]);
 
-    image2 = image2Result.status === "fulfilled" ? image2Result.value : null;
+    image1 = aiImageResult.status === "fulfilled" ? aiImageResult.value : null;
     generatedCopy = copyResult.status === "fulfilled" ? copyResult.value : null;
 
-    if (image2Result.status === "rejected") {
-      imageGenError = imageGenError ?? String(image2Result.reason);
-      console.error("Image generation 2 failed:", image2Result.reason);
+    if (aiImageResult.status === "rejected") {
+      imageGenError = String(aiImageResult.reason);
+      console.error("AI image generation failed:", aiImageResult.reason);
     }
 
-    if (!image1 && !image2) {
-      console.error("Both image generations failed. Last error:", imageGenError);
+    if (!image1) {
+      console.error("AI image generation failed. Error:", imageGenError);
       return NextResponse.json(
         { error: `Falha na geração de imagem pela IA: ${imageGenError ?? "sem imagem retornada"}` },
         { status: 500 }
       );
     }
 
+    // Generate mockups for additional labeled photos (photos index 1+)
+    const additionalPhotos: { url: string; label: string | null }[] = [];
+    if (property.images && property.images.length > 1) {
+      for (let i = 1; i < property.images.length; i++) {
+        const photoUrl = property.images[i];
+        const label = property.image_labels?.[i] ?? null;
+        if (photoUrl) additionalPhotos.push({ url: photoUrl, label });
+      }
+    }
+
+    const mockupBase64Results = await Promise.allSettled(
+      additionalPhotos.map(({ url, label }) =>
+        generateMockup(url, logoUrl, label, format)
+      )
+    );
+
     // 10. Upload images to Supabase Storage and create creative records
+    // Slot 1: AI-generated image; slots 2+: mockups for labeled photos
     const imageUrls: (string | null)[] = [];
     const creativeIds: string[] = [];
     const modelUsed = "gemini-2.5-flash-image";
 
-    for (let i = 0; i < 2; i++) {
-      const imageBase64 = i === 0 ? image1 : image2;
+    // Build unified list: [AI image, ...mockup images]
+    const allImages: { base64: string | null; label: string | null; isMockup: boolean }[] = [
+      { base64: image1, label: null, isMockup: false },
+      ...mockupBase64Results.map((r, i) => ({
+        base64: r.status === "fulfilled" ? r.value : null,
+        label: additionalPhotos[i]?.label ?? null,
+        isMockup: true,
+      })),
+    ];
+
+    for (let i = 0; i < allImages.length; i++) {
+      const { base64: imageBase64, label: roomLabel, isMockup } = allImages[i];
       let imageUrl: string | null = null;
 
       if (imageBase64) {
@@ -282,27 +297,25 @@ export async function POST(request: NextRequest) {
           cta_text: cta_text ?? "Saiba mais",
           image_url: imageUrl,
           original_image_url: propertyPhotoUrl,
-          ai_prompt: compositePrompt,
+          ai_prompt: isMockup ? null : compositePrompt,
           generated_copy: generatedCopy,
           variation_number: i + 1,
           variation_group_id: variationGroupId,
           ai_metadata: {
             category: categoryData.slug,
             category_label: categoryData.label,
-            model: modelUsed,
+            model: isMockup ? "mockup" : modelUsed,
             has_photo: hasPhoto,
             has_logo: logoPart !== null,
+            room_label: roomLabel,
+            is_mockup: isMockup,
           },
         })
         .select("id")
         .single();
 
       const creative = creativeRaw as CreativeId | null;
-
-      if (!createError && creative) {
-        creativeIds.push(creative.id);
-      }
-
+      if (!createError && creative) creativeIds.push(creative.id);
       imageUrls.push(imageUrl);
     }
 
