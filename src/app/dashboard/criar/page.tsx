@@ -36,6 +36,17 @@ interface PromptCategory {
   description: string | null;
 }
 
+const DEFAULT_PROMPT_SLUG = "prompt-padrao";
+
+interface GenerateCreativeResponse {
+  success?: boolean;
+  creative_ids?: string[];
+  image_urls?: (string | null)[];
+  generated_copy?: string | null;
+  status?: string;
+  error?: string;
+}
+
 const CATEGORY_ICONS: Record<string, string> = {
   luxo: "💎",
   lancamento: "🏗️",
@@ -148,7 +159,11 @@ function CriarPageContent() {
         .eq("is_active", true)
         .order("created_at", { ascending: true });
 
-      setCategories((catData ?? []) as PromptCategory[]);
+      setCategories(
+        ((catData ?? []) as PromptCategory[]).filter(
+          (cat) => cat.slug !== DEFAULT_PROMPT_SLUG
+        )
+      );
     } catch {
       // fallback empty
     }
@@ -191,6 +206,9 @@ function CriarPageContent() {
     if (!selectedProperty || !selectedCategory) return;
     setGenerating(true);
     setGenError(null);
+    setGeneratedUrls([]);
+    setGeneratedIds([]);
+    setGeneratedCopy(null);
     setStep(5);
 
     try {
@@ -208,28 +226,61 @@ function CriarPageContent() {
         }),
       });
 
-      const data = (await res.json()) as {
-        success?: boolean;
-        creative_ids?: string[];
-        image_urls?: (string | null)[];
-        generated_copy?: string | null;
-        status?: string;
-        error?: string;
-      };
+      const rawResponse = await res.text();
+      let data: GenerateCreativeResponse | null = null;
+
+      try {
+        data = rawResponse ? (JSON.parse(rawResponse) as GenerateCreativeResponse) : null;
+      } catch {
+        data = null;
+      }
+
+      const fallbackError = !data
+        ? extractPlainErrorMessage(rawResponse, res.status)
+        : null;
+
+      if (data?.creative_ids?.length) setGeneratedIds(data.creative_ids);
+      if (data?.image_urls?.length) setGeneratedUrls(data.image_urls);
+      if (data?.generated_copy) setGeneratedCopy(data.generated_copy);
 
       if (!res.ok) {
-        setGenError(data.error ?? "Erro ao gerar criativo");
+        setGenError(data?.error ?? fallbackError ?? "Erro ao gerar criativo");
+        return;
+      }
+
+      if (!data) {
+        setGenError(fallbackError ?? "Resposta inválida do servidor");
         return;
       }
 
       setGeneratedIds(data.creative_ids ?? []);
       setGeneratedUrls(data.image_urls ?? []);
       setGeneratedCopy(data.generated_copy ?? null);
-    } catch {
-      setGenError("Erro de conexão. Tente novamente.");
+    } catch (err) {
+      setGenError(
+        err instanceof Error && err.message
+          ? `Falha na conexão com o servidor: ${err.message}`
+          : "Falha na conexão com o servidor. Tente novamente."
+      );
     } finally {
       setGenerating(false);
     }
+  }
+
+  function extractPlainErrorMessage(rawResponse: string, status: number) {
+    const plainText = rawResponse
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!plainText) {
+      return `Erro HTTP ${status} ao gerar criativo.`;
+    }
+
+    const shortened = plainText.slice(0, 220);
+    return `Erro HTTP ${status}: ${shortened}`;
   }
 
   async function handleCopyToClipboard() {

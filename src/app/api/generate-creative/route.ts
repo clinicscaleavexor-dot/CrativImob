@@ -42,6 +42,40 @@ type CategoryRow = {
 type CreativeId = { id: string };
 type ImagePart = { inlineData: { mimeType: string; data: string } };
 
+const DEFAULT_PROMPT_SLUG = "prompt-padrao";
+
+const FORMAT_CONFIGS: Record<
+  string,
+  {
+    label: string;
+    size: string;
+    aspectRatio: "1:1" | "9:16" | "16:9";
+    layoutInstruction: string;
+  }
+> = {
+  "1080x1080": {
+    label: "Feed quadrado",
+    size: "1080x1080",
+    aspectRatio: "1:1",
+    layoutInstruction:
+      "Composição pensada para feed, com equilíbrio central, boa leitura em miniatura e margem segura para textos e CTA.",
+  },
+  "1080x1920": {
+    label: "Stories vertical",
+    size: "1080x1920",
+    aspectRatio: "9:16",
+    layoutInstruction:
+      "Composição vertical para stories, com elementos principais concentrados no centro e espaço respirando no topo e no rodapé.",
+  },
+  "1200x628": {
+    label: "Anúncio horizontal",
+    size: "1200x628",
+    aspectRatio: "16:9",
+    layoutInstruction:
+      "Composição horizontal para mídia paga, preservando área segura central para possível recorte em 1200x628 e leitura rápida do texto.",
+  },
+};
+
 // ---------- POST Handler ----------
 
 export async function POST(request: NextRequest) {
@@ -130,7 +164,7 @@ export async function POST(request: NextRequest) {
       company_logo_url: null,
     };
 
-    // 5. Category prompt template
+    // 5. Category prompt template + default prompt template
     const { data: categoryRaw, error: catError } = await db
       .from("prompt_categories")
       .select("id,slug,label,prompt_template")
@@ -146,6 +180,15 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    const { data: defaultPromptRaw } = await db
+      .from("prompt_categories")
+      .select("id,slug,label,prompt_template")
+      .eq("slug", DEFAULT_PROMPT_SLUG)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    const defaultPrompt = defaultPromptRaw as CategoryRow | null;
 
     // 6. Debit 1 credit (1 credit = 2 variations)
     await db
@@ -172,17 +215,17 @@ export async function POST(request: NextRequest) {
     const hasPhoto = propertyPhotoPart !== null;
 
     // 8. Build prompt
-    const formatDimensions: Record<string, string> = {
-      "1080x1080": "square 1080x1080 (Instagram post)",
-      "1080x1920": "vertical 1080x1920 (Instagram/Facebook Stories)",
-      "1200x628": "horizontal 1200x628 (Facebook/Google Ads banner)",
-    };
+    const formatConfig = FORMAT_CONFIGS[format] ?? FORMAT_CONFIGS["1080x1080"];
 
     const compositePrompt = buildCompositePrompt({
-      template: categoryData.prompt_template,
+      defaultTemplate: defaultPrompt?.prompt_template ?? "",
+      categoryTemplate: categoryData.prompt_template,
       property,
       profile,
-      format: formatDimensions[format] ?? format,
+      formatId: format,
+      formatLabel: `${formatConfig.label} ${formatConfig.size}`,
+      aspectRatio: formatConfig.aspectRatio,
+      layoutInstruction: formatConfig.layoutInstruction,
       headline: headline ?? "",
       copyText: copy_text ?? "",
       ctaText: cta_text ?? "Saiba mais",
@@ -216,7 +259,8 @@ export async function POST(request: NextRequest) {
         geminiApiKey,
         compositePrompt,
         "Professional marketing creative with clean layout",
-        imageParts
+        imageParts,
+        formatConfig.aspectRatio
       ),
       callGeminiCopy(geminiApiKey, property, categoryData, profile),
     ]);
@@ -309,11 +353,14 @@ export async function POST(request: NextRequest) {
           ai_metadata: {
             category: categoryData.slug,
             category_label: categoryData.label,
+            default_prompt_slug: defaultPrompt?.slug ?? null,
             model: isMockup ? "mockup" : modelUsed,
             has_photo: hasPhoto,
             has_logo: logoPart !== null,
             room_label: roomLabel,
             is_mockup: isMockup,
+            selected_format: format,
+            selected_aspect_ratio: formatConfig.aspectRatio,
           },
         })
         .select("id")
@@ -358,20 +405,28 @@ async function fetchImageAsBase64(url: string): Promise<ImagePart | null> {
 }
 
 function buildCompositePrompt({
-  template,
+  defaultTemplate,
+  categoryTemplate,
   property,
   profile,
-  format,
+  formatId,
+  formatLabel,
+  aspectRatio,
+  layoutInstruction,
   headline,
   copyText,
   ctaText,
   hasPhoto,
   hasLogo,
 }: {
-  template: string;
+  defaultTemplate: string;
+  categoryTemplate: string;
   property: PropertyRow;
   profile: ProfileBriefing;
-  format: string;
+  formatId: string;
+  formatLabel: string;
+  aspectRatio: string;
+  layoutInstruction: string;
   headline: string;
   copyText: string;
   ctaText: string;
@@ -383,9 +438,11 @@ function buildCompositePrompt({
     : "";
 
   const propertyParts = [
+    `Property title: ${property.title}`,
     `Property type: ${property.type}`,
     property.city ? `City: ${property.city}` : "",
     property.state ? `State: ${property.state}` : "",
+    property.location ? `Location reference: ${property.location}` : "",
     price ? `Price: ${price}` : "",
     property.bedrooms ? `Bedrooms: ${property.bedrooms}` : "",
     property.bathrooms ? `Bathrooms: ${property.bathrooms}` : "",
@@ -417,13 +474,40 @@ function buildCompositePrompt({
     .filter(Boolean)
     .join(". ");
 
-  let prompt = template
-    .replace("{property_details}", propertyParts)
-    .replace(
-      "{briefing}",
-      briefingParts || "Modern professional real estate brand"
-    )
-    .replace("{format}", format);
+  const brandBriefing = briefingParts || "Modern professional real estate brand";
+  const formatInstructions = `${formatLabel}. Exact output target: ${formatId}. Aspect ratio to honor: ${aspectRatio}. ${layoutInstruction}`;
+
+  const replacements: Record<string, string> = {
+    property_details: propertyParts,
+    briefing: brandBriefing,
+    format: formatInstructions,
+    brand_details: brandBriefing,
+    selected_size: formatId,
+    aspect_ratio: aspectRatio,
+    headline: headline || "",
+    copy_text: copyText || "",
+    cta_text: ctaText || "",
+  };
+
+  const renderedDefaultPrompt = renderPromptTemplate(defaultTemplate, replacements);
+  const renderedCategoryPrompt = renderPromptTemplate(categoryTemplate, replacements);
+
+  const promptSections = [
+    renderedDefaultPrompt
+      ? `GLOBAL SYSTEM INSTRUCTIONS:\n${renderedDefaultPrompt}`
+      : "",
+    renderedCategoryPrompt
+      ? `CATEGORY-SPECIFIC INSTRUCTIONS (${categoryTemplate ? "selected category" : ""}):\n${renderedCategoryPrompt}`
+      : "",
+    `BRAND INFORMATION:\n${brandBriefing}`,
+    `PROPERTY DETAILS:\n${propertyParts}`,
+    `FORMAT REQUIREMENTS:\n${formatInstructions}`,
+    headline ? `HEADLINE TO INCLUDE: \"${headline}\"` : "",
+    copyText ? `SUPPORTING DESCRIPTION TO INCLUDE: \"${copyText}\"` : "",
+    ctaText ? `CTA TEXT TO INCLUDE: \"${ctaText}\"` : "",
+  ].filter(Boolean);
+
+  let prompt = promptSections.join("\n\n");
 
   if (hasPhoto) {
     prompt +=
@@ -441,6 +525,20 @@ function buildCompositePrompt({
   return prompt;
 }
 
+function renderPromptTemplate(
+  template: string,
+  replacements: Record<string, string>
+): string {
+  if (!template) return "";
+
+  let rendered = template;
+  for (const [key, value] of Object.entries(replacements)) {
+    rendered = rendered.replaceAll(`{${key}}`, value);
+  }
+
+  return rendered;
+}
+
 const IMAGE_MODELS = [
   "gemini-2.5-flash-image",
   "gemini-3.1-flash-image-preview",
@@ -450,7 +548,8 @@ async function callGeminiImage(
   apiKey: string,
   prompt: string,
   variationHint: string,
-  imageParts: ImagePart[]
+  imageParts: ImagePart[],
+  aspectRatio: "1:1" | "9:16" | "16:9"
 ): Promise<string | null> {
   const fullPrompt = `${prompt}\n\nGenerate a unique creative variation (${variationHint}). Make it visually distinct from other variations while keeping the same brand and property context.`;
 
@@ -465,6 +564,9 @@ async function callGeminiImage(
     contents: [{ role: "user", parts }],
     generationConfig: {
       responseModalities: ["IMAGE", "TEXT"],
+      imageConfig: {
+        aspectRatio,
+      },
     },
   };
 

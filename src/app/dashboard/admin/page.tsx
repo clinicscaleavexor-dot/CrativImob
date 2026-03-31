@@ -25,6 +25,8 @@ interface PromptCategory {
   updated_at: string;
 }
 
+const DEFAULT_PROMPT_SLUG = "prompt-padrao";
+
 const CATEGORY_ICONS: Record<string, string> = {
   luxo: "💎",
   lancamento: "🏗️",
@@ -39,6 +41,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editedPrompts, setEditedPrompts] = useState<Record<string, string>>({});
+  const [defaultPromptDraft, setDefaultPromptDraft] = useState("");
+  const [savingDefaultPrompt, setSavingDefaultPrompt] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategory, setNewCategory] = useState({
     slug: "",
@@ -66,6 +70,16 @@ export default function AdminPage() {
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
+
+  const defaultPromptCategory =
+    categories.find((cat) => cat.slug === DEFAULT_PROMPT_SLUG) ?? null;
+  const visibleCategories = categories.filter(
+    (cat) => cat.slug !== DEFAULT_PROMPT_SLUG
+  );
+
+  useEffect(() => {
+    setDefaultPromptDraft(defaultPromptCategory?.prompt_template ?? "");
+  }, [defaultPromptCategory?.id, defaultPromptCategory?.prompt_template]);
 
   function showFeedback(type: "ok" | "err", msg: string) {
     setFeedback({ type, msg });
@@ -138,6 +152,11 @@ export default function AdminPage() {
       return;
     }
 
+    if (newCategory.slug === DEFAULT_PROMPT_SLUG) {
+      showFeedback("err", "Esse slug é reservado para o Prompt Padrão");
+      return;
+    }
+
     setAddLoading(true);
     try {
       const res = await fetch("/api/admin/prompts", {
@@ -162,6 +181,54 @@ export default function AdminPage() {
     }
   }
 
+  async function handleSaveDefaultPrompt() {
+    if (!defaultPromptDraft.trim()) {
+      showFeedback("err", "Preencha o Prompt Padrão antes de salvar");
+      return;
+    }
+
+    setSavingDefaultPrompt(true);
+    try {
+      const endpoint = "/api/admin/prompts";
+      const method = defaultPromptCategory ? "PATCH" : "POST";
+      const body = defaultPromptCategory
+        ? {
+            id: defaultPromptCategory.id,
+            prompt_template: defaultPromptDraft,
+            label: "Prompt Padrão",
+            description: "Instruções globais aplicadas a todos os criativos",
+            is_active: true,
+          }
+        : {
+            slug: DEFAULT_PROMPT_SLUG,
+            label: "Prompt Padrão",
+            description: "Instruções globais aplicadas a todos os criativos",
+            prompt_template: defaultPromptDraft,
+          };
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        showFeedback("err", data?.error ?? "Erro ao salvar Prompt Padrão");
+        return;
+      }
+
+      showFeedback("ok", "Prompt Padrão salvo com sucesso");
+      await loadCategories();
+    } catch {
+      showFeedback("err", "Erro de conexão ao salvar Prompt Padrão");
+    } finally {
+      setSavingDefaultPrompt(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -181,7 +248,7 @@ export default function AdminPage() {
           <div>
             <h1 className="text-2xl font-black text-white">Admin Master</h1>
             <p className="text-white/60 text-sm">
-              Controle os prompts de cada categoria de criativo
+              Controle o Prompt Padrão e os prompts de cada categoria de criativo
             </p>
           </div>
         </div>
@@ -206,6 +273,54 @@ export default function AdminPage() {
           {feedback.msg}
         </div>
       )}
+
+      <div className="bg-white/[0.03] border border-brand-500/20 rounded-2xl p-6 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-brand-400" />
+              Prompt Padrão
+            </h2>
+            <p className="text-white/60 text-sm mt-1">
+              Essa instrução global acompanha todos os prompts de categoria, junto com marca, logo, imóvel e formato selecionado.
+            </p>
+          </div>
+          <span className="text-[11px] uppercase tracking-[0.18em] text-brand-300/70 border border-brand-400/20 px-3 py-1 rounded-full">
+            Global
+          </span>
+        </div>
+
+        <div>
+          <p className="text-white/50 text-xs mb-2">
+            Placeholders aceitos: {"{property_details}"}, {"{briefing}"}, {"{format}"}, {"{selected_size}"}, {"{aspect_ratio}"}, {"{headline}"}, {"{copy_text}"}, {"{cta_text}"}
+          </p>
+          <textarea
+            rows={7}
+            value={defaultPromptDraft}
+            onChange={(e) => setDefaultPromptDraft(e.target.value)}
+            placeholder="Defina aqui as instruções globais que devem sempre acompanhar a geração dos criativos."
+            className="w-full bg-black/30 border border-white/8 rounded-xl px-4 py-3 text-white/80 text-sm font-mono leading-relaxed focus:outline-none focus:border-brand-500/40 resize-none transition-all"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-white/45 text-xs">
+            Use este campo para orientar composição, linguagem visual, posicionamento de logo, regras gerais de branding e exigências que valem para qualquer categoria.
+          </p>
+          <button
+            onClick={handleSaveDefaultPrompt}
+            disabled={savingDefaultPrompt || defaultPromptDraft === (defaultPromptCategory?.prompt_template ?? "")}
+            className="flex items-center gap-1.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+          >
+            {savingDefaultPrompt ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Salvar Prompt Padrão
+          </button>
+        </div>
+      </div>
 
       {/* Add Category Form */}
       {showAddForm && (
@@ -270,7 +385,7 @@ export default function AdminPage() {
             </label>
             <p className="text-white/50 text-xs mb-2">
               Use {"{property_details}"}, {"{briefing}"} e {"{format}"} como
-              placeholders
+              placeholders. O Prompt Padrão será adicionado automaticamente junto com este conteúdo.
             </p>
             <textarea
               rows={5}
@@ -303,7 +418,7 @@ export default function AdminPage() {
 
       {/* Category Cards */}
       <div className="space-y-4">
-        {categories.map((cat) => {
+        {visibleCategories.map((cat) => {
           const isEdited =
             editedPrompts[cat.id] !== undefined &&
             editedPrompts[cat.id] !== cat.prompt_template;
@@ -430,7 +545,7 @@ export default function AdminPage() {
         })}
       </div>
 
-      {categories.length === 0 && (
+      {visibleCategories.length === 0 && (
         <div className="text-center py-16">
           <Shield className="w-10 h-10 text-white/15 mx-auto mb-3" />
           <p className="text-white/60">Nenhuma categoria de prompt encontrada</p>
