@@ -41,6 +41,7 @@ type CategoryRow = {
 };
 type CreativeId = { id: string };
 type ImagePart = { inlineData: { mimeType: string; data: string } };
+type GeneratedImage = { base64: string; model: string };
 
 const DEFAULT_PROMPT_SLUG = "prompt-padrao";
 
@@ -251,6 +252,7 @@ export async function POST(request: NextRequest) {
 
     // Generate 1 AI image (primary creative) + copy in parallel
     let image1: string | null = null;
+    let aiModelUsed: string | null = null;
     let generatedCopy: string | null = null;
     let imageGenError: string | null = null;
 
@@ -265,7 +267,8 @@ export async function POST(request: NextRequest) {
       callGeminiCopy(geminiApiKey, property, categoryData, profile),
     ]);
 
-    image1 = aiImageResult.status === "fulfilled" ? aiImageResult.value : null;
+    image1 = aiImageResult.status === "fulfilled" ? aiImageResult.value.base64 : null;
+    aiModelUsed = aiImageResult.status === "fulfilled" ? aiImageResult.value.model : null;
     generatedCopy = copyResult.status === "fulfilled" ? copyResult.value : null;
 
     if (aiImageResult.status === "rejected") {
@@ -306,7 +309,7 @@ export async function POST(request: NextRequest) {
     // Slot 1: AI-generated image; slots 2+: mockups for labeled photos
     const imageUrls: (string | null)[] = [];
     const creativeIds: string[] = [];
-    const modelUsed = "gemini-2.5-flash-image";
+    const modelUsed = aiModelUsed ?? "gemini-3-pro-image-preview";
 
     // Build unified list: [AI image, ...mockup images]
     const allImages: { base64: string | null; label: string | null; isMockup: boolean }[] = [
@@ -540,8 +543,9 @@ function renderPromptTemplate(
 }
 
 const IMAGE_MODELS = [
-  "gemini-2.5-flash-image",
+  "gemini-3-pro-image-preview",
   "gemini-3.1-flash-image-preview",
+  "gemini-2.5-flash-image",
 ];
 
 async function callGeminiImage(
@@ -550,7 +554,7 @@ async function callGeminiImage(
   variationHint: string,
   imageParts: ImagePart[],
   aspectRatio: "1:1" | "9:16" | "16:9"
-): Promise<string | null> {
+): Promise<GeneratedImage> {
   const fullPrompt = `${prompt}\n\nGenerate a unique creative variation (${variationHint}). Make it visually distinct from other variations while keeping the same brand and property context.`;
 
   // Build multimodal content parts: images first, then text
@@ -560,20 +564,26 @@ async function callGeminiImage(
     { text: fullPrompt },
   ];
 
-  const requestBody = {
-    contents: [{ role: "user", parts }],
-    generationConfig: {
-      responseModalities: ["IMAGE", "TEXT"],
-      imageConfig: {
-        aspectRatio,
-      },
-    },
-  };
-
   let lastError: string | null = null;
 
   for (const modelName of IMAGE_MODELS) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const requestBody = {
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        responseModalities: ["IMAGE", "TEXT"],
+        imageConfig:
+          modelName === "gemini-3-pro-image-preview" ||
+          modelName === "gemini-3.1-flash-image-preview"
+            ? {
+                aspectRatio,
+                imageSize: "2K",
+              }
+            : {
+                aspectRatio,
+              },
+      },
+    };
 
     try {
       console.log(`callGeminiImage: trying model ${modelName}`);
@@ -603,7 +613,10 @@ async function callGeminiImage(
       for (const part of candidates[0].content.parts) {
         if (part.inlineData?.mimeType?.startsWith("image/")) {
           console.log(`callGeminiImage: success with model ${modelName}`);
-          return part.inlineData.data as string;
+          return {
+            base64: part.inlineData.data as string,
+            model: modelName,
+          };
         }
       }
 
