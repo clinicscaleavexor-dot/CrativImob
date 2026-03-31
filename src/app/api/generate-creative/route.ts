@@ -215,9 +215,30 @@ export async function POST(request: NextRequest) {
 
     const hasPhoto = propertyPhotoPart !== null;
 
-    // 8. Build prompt
+    // 8. HEADLINE/COPY GENERATION STEP (dedicated, before image)
     const formatConfig = FORMAT_CONFIGS[format] ?? FORMAT_CONFIGS["1080x1080"];
+    let finalHeadline = headline ?? "";
+    let finalCopy = copy_text ?? "";
+    let generatedCopy: string | null = null;
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      return NextResponse.json(
+        { error: "Chave da API de IA não configurada" },
+        { status: 500 }
+      );
+    }
+    if (!finalHeadline || !finalCopy) {
+      const copyResult = await callGeminiCopy(geminiApiKey, property, categoryData, profile);
+      if (copyResult) {
+        // Heuristic: first line = headline, rest = copy
+        const [first, ...rest] = copyResult.split("\n").map((s) => s.trim()).filter(Boolean);
+        finalHeadline = finalHeadline || first || "";
+        finalCopy = finalCopy || rest.join(" ") || copyResult;
+        generatedCopy = copyResult;
+      }
+    }
 
+    // 9. PROMPT LAYERING (faithful to admin/master config)
     const compositePrompt = buildCompositePrompt({
       defaultTemplate: defaultPrompt?.prompt_template ?? "",
       categoryTemplate: categoryData.prompt_template,
@@ -227,53 +248,36 @@ export async function POST(request: NextRequest) {
       formatLabel: `${formatConfig.label} ${formatConfig.size}`,
       aspectRatio: formatConfig.aspectRatio,
       layoutInstruction: formatConfig.layoutInstruction,
-      headline: headline ?? "",
-      copyText: copy_text ?? "",
+      headline: finalHeadline,
+      copyText: finalCopy,
       ctaText: cta_text ?? "Saiba mais",
       hasPhoto,
       hasLogo: logoPart !== null,
     });
+    // Log the full composite prompt for debugging
+    console.log("[Gemini] compositePrompt:", compositePrompt);
 
-    // 9. Generate images + copy in parallel
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-
-    if (!geminiApiKey) {
-      return NextResponse.json(
-        { error: "Chave da API de IA não configurada" },
-        { status: 500 }
-      );
-    }
-
+    // 10. IMAGE GENERATION (dedicated step, after headline/copy)
     const variationGroupId = crypto.randomUUID();
-
     const imageParts: ImagePart[] = [];
     if (propertyPhotoPart) imageParts.push(propertyPhotoPart);
     if (logoPart) imageParts.push(logoPart);
-
-    // Generate 1 AI image (primary creative) + copy in parallel
     let image1: string | null = null;
     let aiModelUsed: string | null = null;
-    let generatedCopy: string | null = null;
     let imageGenError: string | null = null;
-
-    const [aiImageResult, copyResult] = await Promise.allSettled([
-      callGeminiImage(
+    try {
+      const aiImageResult = await callGeminiImage(
         geminiApiKey,
         compositePrompt,
         "Professional marketing creative with clean layout",
         imageParts,
         formatConfig.aspectRatio
-      ),
-      callGeminiCopy(geminiApiKey, property, categoryData, profile),
-    ]);
-
-    image1 = aiImageResult.status === "fulfilled" ? aiImageResult.value.base64 : null;
-    aiModelUsed = aiImageResult.status === "fulfilled" ? aiImageResult.value.model : null;
-    generatedCopy = copyResult.status === "fulfilled" ? copyResult.value : null;
-
-    if (aiImageResult.status === "rejected") {
-      imageGenError = String(aiImageResult.reason);
-      console.error("AI image generation failed:", aiImageResult.reason);
+      );
+      image1 = aiImageResult.base64;
+      aiModelUsed = aiImageResult.model;
+    } catch (err) {
+      imageGenError = String(err);
+      console.error("AI image generation failed:", err);
     }
 
     // If AI failed but property has additional photos, continue with mockups only
@@ -381,6 +385,7 @@ export async function POST(request: NextRequest) {
       generated_copy: generatedCopy,
       variation_group_id: variationGroupId,
       status: imageUrls.some((u) => u !== null) ? "completed" : "failed",
+      debug_prompt: compositePrompt, // For admin/debugging only
     });
   } catch (err) {
     console.error("generate-creative error:", err);
@@ -542,9 +547,11 @@ function renderPromptTemplate(
   return rendered;
 }
 
+
+// Model priority: gemini-3.1-flash-image-preview (primary), fallback to gemini-3-pro-image-preview, then gemini-2.5-flash-image
 const IMAGE_MODELS = [
-  "gemini-3-pro-image-preview",
   "gemini-3.1-flash-image-preview",
+  "gemini-3-pro-image-preview",
   "gemini-2.5-flash-image",
 ];
 
