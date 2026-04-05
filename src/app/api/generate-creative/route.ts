@@ -68,8 +68,9 @@ const FORMAT_CONFIGS: Record<
 };
 
 // Model names
-const FLASH_MODEL = "gemini-2.5-flash-image";
-const PRO_MODEL = "gemini-3.1-flash-image-preview";
+const FLASH_MODEL = "gemini-3.1-flash-image-preview";   // Nano Banana 2
+const PRO_MODEL = "gemini-3-pro-image-preview";           // Nano Banana Pro
+const LEGACY_FLASH_MODEL = "gemini-2.5-flash-image";      // last resort
 
 // ---------- POST Handler ----------
 
@@ -367,88 +368,30 @@ async function callGeminiImage(
   aspectRatio: "1:1" | "9:16" | "16:9",
   modelPreference?: string
 ): Promise<GeneratedImage> {
-  const primaryModel = modelPreference === "pro" ? PRO_MODEL : FLASH_MODEL;
-  const fallbackModel = modelPreference === "pro" ? FLASH_MODEL : PRO_MODEL;
-  const models = [primaryModel, fallbackModel];
-  const primaryImagePart = imageParts[0] ?? null;
-  let lastError: string | null = null;
+  const models =
+    modelPreference === "pro"
+      ? [PRO_MODEL, FLASH_MODEL, LEGACY_FLASH_MODEL]
+      : [FLASH_MODEL, PRO_MODEL, LEGACY_FLASH_MODEL];
 
-  // Attempt 1: generateImages endpoint
-  for (const modelName of models) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateImages?key=${apiKey}`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const requestBody: Record<string, any> = {
-      prompt,
-      outputOptions: {
-        numberOfImages: 1,
-        aspectRatio,
-        outputMimeType: "image/jpeg",
-      },
-    };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parts: any[] = [
+    ...imageParts.map((ip) => ({ inlineData: ip.inlineData })),
+    { text: prompt },
+  ];
+  const requestBody = {
+    contents: [{ role: "user", parts }],
+    generationConfig: {
+      responseModalities: ["IMAGE", "TEXT"],
+      imageConfig: { aspectRatio },
+    },
+  };
 
-    if (primaryImagePart) {
-      requestBody.imageContext = {
-        referenceImages: [
-          {
-            image: {
-              imageBytes: primaryImagePart.inlineData.data,
-              mimeType: primaryImagePart.inlineData.mimeType,
-            },
-          },
-        ],
-      };
-    }
+  let lastError = "All image models failed";
 
-    try {
-      console.log(`callGeminiImage (generateImages): trying model ${modelName}`);
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(50000),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error(`callGeminiImage ${modelName} generateImages HTTP ${res.status}:`, errText);
-        lastError = `${modelName} generateImages HTTP ${res.status}: ${errText.slice(0, 200)}`;
-        continue;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const json: any = await res.json();
-      const imageBytes = json.generatedImages?.[0]?.image?.imageBytes;
-      if (imageBytes) {
-        console.log(`callGeminiImage: success with model ${modelName} (generateImages)`);
-        return { base64: imageBytes as string, model: modelName };
-      }
-
-      console.error(`callGeminiImage ${modelName}: generateImages had no image data`, JSON.stringify(json).slice(0, 500));
-      lastError = `${modelName}: generateImages no image in response`;
-    } catch (err) {
-      console.error(`callGeminiImage ${modelName} generateImages error:`, err);
-      lastError = `${modelName} generateImages: ${String(err)}`;
-    }
-  }
-
-  // Attempt 2: generateContent fallback (multimodal with responseModalities)
   for (const modelName of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parts: any[] = [
-      ...imageParts.map((ip) => ({ inlineData: ip.inlineData })),
-      { text: prompt },
-    ];
-    const requestBody = {
-      contents: [{ role: "user", parts }],
-      generationConfig: {
-        responseModalities: ["IMAGE", "TEXT"],
-        imageConfig: { aspectRatio },
-      },
-    };
-
     try {
-      console.log(`callGeminiImage (generateContent fallback): trying model ${modelName}`);
+      console.log(`callGeminiImage: trying model ${modelName}`);
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -458,36 +401,37 @@ async function callGeminiImage(
 
       if (!res.ok) {
         const errText = await res.text();
-        console.error(`callGeminiImage ${modelName} generateContent HTTP ${res.status}:`, errText);
-        lastError = `${modelName} generateContent HTTP ${res.status}: ${errText.slice(0, 200)}`;
+        console.error(`callGeminiImage ${modelName} HTTP ${res.status}:`, errText);
+        lastError = `${modelName} HTTP ${res.status}: ${errText.slice(0, 200)}`;
         continue;
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const json: any = await res.json();
-      const candidates = json.candidates;
-      if (!candidates?.[0]?.content?.parts) {
-        console.error(`callGeminiImage ${modelName} generateContent: no parts`, JSON.stringify(json).slice(0, 500));
-        lastError = `${modelName} generateContent: no parts in response`;
+      const responseParts = json.candidates?.[0]?.content?.parts;
+      if (!responseParts) {
+        console.error(`callGeminiImage ${modelName}: no parts`, JSON.stringify(json).slice(0, 500));
+        lastError = `${modelName}: no parts in response`;
         continue;
       }
 
-      for (const part of candidates[0].content.parts) {
+      for (const part of responseParts) {
+        if (part.thought) continue; // skip thinking/draft parts
         if (part.inlineData?.mimeType?.startsWith("image/")) {
-          console.log(`callGeminiImage: success with model ${modelName} (generateContent)`);
+          console.log(`callGeminiImage: success with model ${modelName}`);
           return { base64: part.inlineData.data as string, model: modelName };
         }
       }
 
-      console.error(`callGeminiImage ${modelName} generateContent: no image in parts`);
-      lastError = `${modelName} generateContent: no image in response parts`;
+      console.error(`callGeminiImage ${modelName}: no image in parts`);
+      lastError = `${modelName}: no image in response parts`;
     } catch (err) {
-      console.error(`callGeminiImage ${modelName} generateContent error:`, err);
-      lastError = `${modelName} generateContent: ${String(err)}`;
+      console.error(`callGeminiImage ${modelName} error:`, err);
+      lastError = `${modelName}: ${String(err)}`;
     }
   }
 
-  throw new Error(lastError ?? "All image models failed");
+  throw new Error(lastError);
 }
 
 async function uploadToStorage(
