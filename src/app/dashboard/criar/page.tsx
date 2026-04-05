@@ -109,6 +109,7 @@ function CriarPageContent() {
   const [selectedCategory, setSelectedCategory] = useState<PromptCategory | null>(null);
   const [selectedFormat, setSelectedFormat] = useState("1080x1080");
   const [selectedType, setSelectedType] = useState("post");
+  const [selectedModel, setSelectedModel] = useState<"flash" | "pro">("flash");
 
   // Copy
   const [headline, setHeadline] = useState("");
@@ -223,6 +224,7 @@ function CriarPageContent() {
           headline,
           copy_text: copyText,
           cta_text: ctaText,
+          model: selectedModel,
         }),
       });
 
@@ -517,6 +519,30 @@ function CriarPageContent() {
                       </p>
                       <p className="text-white/60 text-xs">{f.sublabel}</p>
                     </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Modelo IA */}
+            <div>
+              <p className="text-sm text-white/60 font-medium mb-3">Modelo de IA</p>
+              <div className="flex gap-2">
+                {[
+                  { id: "flash" as const, label: "Flash", desc: "Rápido e econômico" },
+                  { id: "pro" as const, label: "Pro", desc: "Maior qualidade" },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedModel(m.id)}
+                    className={`flex-1 flex flex-col items-center gap-1 px-4 py-3 rounded-xl border transition-all ${
+                      selectedModel === m.id
+                        ? "border-brand-500/60 bg-brand-500/10 ring-1 ring-brand-500/30"
+                        : "border-white/8 bg-white/3 hover:border-white/20"
+                    }`}
+                  >
+                    <span className="text-white font-semibold text-sm">{m.label}</span>
+                    <span className="text-white/50 text-xs">{m.desc}</span>
                   </button>
                 ))}
               </div>

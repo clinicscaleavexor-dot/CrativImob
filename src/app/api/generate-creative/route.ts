@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
       headline,
       copy_text,
       cta_text,
+      model,
     } = body;
 
     if (!property_id || !category || !format) {
@@ -242,6 +243,7 @@ export async function POST(request: NextRequest) {
     const compositePrompt = buildCompositePrompt({
       defaultTemplate: defaultPrompt?.prompt_template ?? "",
       categoryTemplate: categoryData.prompt_template,
+      categoryLabel: categoryData.label,
       property,
       profile,
       formatId: format,
@@ -271,7 +273,8 @@ export async function POST(request: NextRequest) {
         compositePrompt,
         "Professional marketing creative with clean layout",
         imageParts,
-        formatConfig.aspectRatio
+        formatConfig.aspectRatio,
+        model as string | undefined
       );
       image1 = aiImageResult.base64;
       aiModelUsed = aiImageResult.model;
@@ -415,6 +418,7 @@ async function fetchImageAsBase64(url: string): Promise<ImagePart | null> {
 function buildCompositePrompt({
   defaultTemplate,
   categoryTemplate,
+  categoryLabel,
   property,
   profile,
   formatId,
@@ -429,6 +433,7 @@ function buildCompositePrompt({
 }: {
   defaultTemplate: string;
   categoryTemplate: string;
+  categoryLabel: string;
   property: PropertyRow;
   profile: ProfileBriefing;
   formatId: string;
@@ -505,7 +510,7 @@ function buildCompositePrompt({
       ? `GLOBAL SYSTEM INSTRUCTIONS:\n${renderedDefaultPrompt}`
       : "",
     renderedCategoryPrompt
-      ? `CATEGORY-SPECIFIC INSTRUCTIONS (${categoryTemplate ? "selected category" : ""}):\n${renderedCategoryPrompt}`
+      ? `CATEGORY-SPECIFIC INSTRUCTIONS (${categoryLabel}):\n${renderedCategoryPrompt}`
       : "",
     `BRAND INFORMATION:\n${brandBriefing}`,
     `PROPERTY DETAILS:\n${propertyParts}`,
@@ -560,9 +565,20 @@ async function callGeminiImage(
   prompt: string,
   variationHint: string,
   imageParts: ImagePart[],
-  aspectRatio: "1:1" | "9:16" | "16:9"
+  aspectRatio: "1:1" | "9:16" | "16:9",
+  modelPreference?: string
 ): Promise<GeneratedImage> {
   const fullPrompt = `${prompt}\n\nGenerate a unique creative variation (${variationHint}). Make it visually distinct from other variations while keeping the same brand and property context.`;
+
+  // Reorder models based on user preference
+  let models = [...IMAGE_MODELS];
+  if (modelPreference === "pro") {
+    models = [
+      "gemini-3-pro-image-preview",
+      "gemini-3.1-flash-image-preview",
+      "gemini-2.5-flash-image",
+    ];
+  }
 
   // Build multimodal content parts: images first, then text
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -573,7 +589,7 @@ async function callGeminiImage(
 
   let lastError: string | null = null;
 
-  for (const modelName of IMAGE_MODELS) {
+  for (const modelName of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     const requestBody = {
       contents: [{ role: "user", parts }],
