@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -29,15 +29,6 @@ import type { Tables } from "@/types/database";
 
 type Property = Tables<"properties">;
 
-interface PromptCategory {
-  id: string;
-  slug: string;
-  label: string;
-  description: string | null;
-}
-
-const DEFAULT_PROMPT_SLUG = "prompt-padrao";
-
 interface GenerateCreativeResponse {
   success?: boolean;
   creative_ids?: string[];
@@ -47,35 +38,26 @@ interface GenerateCreativeResponse {
   error?: string;
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  luxo: "💎",
-  lancamento: "🏗️",
-  praia: "🏖️",
-  centro: "🏙️",
-  campo: "🌿",
-  comercial: "🏢",
-};
-
 const FORMATS = [
   {
     id: "1080x1080",
     label: "Post",
-    sublabel: "1080 × 1080",
-    icon: "⬛",
+    sublabel: "1080 x 1080",
+    icon: "squares",
     ratio: "aspect-square",
   },
   {
     id: "1080x1920",
     label: "Stories",
-    sublabel: "1080 × 1920",
-    icon: "📱",
+    sublabel: "1080 x 1920",
+    icon: "mobile",
     ratio: "aspect-[9/16]",
   },
   {
     id: "1200x628",
-    label: "Tráfego",
-    sublabel: "1200 × 628",
-    icon: "🖥️",
+    label: "Trafego",
+    sublabel: "1200 x 628",
+    icon: "desktop",
     ratio: "aspect-[1200/628]",
   },
 ];
@@ -83,15 +65,14 @@ const FORMATS = [
 const CREATIVE_TYPES = [
   { id: "post", label: "Feed" },
   { id: "story", label: "Story" },
-  { id: "trafego_pago", label: "Tráfego Pago" },
+  { id: "trafego_pago", label: "Trafego Pago" },
 ];
 
 const STEPS = [
-  { id: 1, label: "Imóvel", icon: Building2 },
-  { id: 2, label: "Categoria", icon: Sparkles },
-  { id: 3, label: "Formato", icon: LayoutGrid },
-  { id: 4, label: "Texto", icon: Pencil },
-  { id: 5, label: "Resultado", icon: Eye },
+  { id: 1, label: "Imovel", icon: Building2 },
+  { id: 2, label: "Formato", icon: LayoutGrid },
+  { id: 3, label: "Prompt", icon: Sparkles },
+  { id: 4, label: "Resultado", icon: Eye },
 ];
 
 function CriarPageContent() {
@@ -101,17 +82,16 @@ function CriarPageContent() {
 
   const [step, setStep] = useState(1);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [categories, setCategories] = useState<PromptCategory[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Selections
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<PromptCategory | null>(null);
   const [selectedFormat, setSelectedFormat] = useState("1080x1080");
   const [selectedType, setSelectedType] = useState("post");
   const [selectedModel, setSelectedModel] = useState<"flash" | "pro">("flash");
 
-  // Copy
+  // Prompt and copy
+  const [userPrompt, setUserPrompt] = useState("");
   const [headline, setHeadline] = useState("");
   const [copyText, setCopyText] = useState("");
   const [ctaText, setCtaText] = useState("Saiba mais");
@@ -151,24 +131,6 @@ function CriarPageContent() {
       }
     }
 
-    // Load categories from API
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: catData } = await (supabase as any)
-        .from("prompt_categories")
-        .select("id,slug,label,description")
-        .eq("is_active", true)
-        .order("created_at", { ascending: true });
-
-      setCategories(
-        ((catData ?? []) as PromptCategory[]).filter(
-          (cat) => cat.slug !== DEFAULT_PROMPT_SLUG
-        )
-      );
-    } catch {
-      // fallback empty
-    }
-
     setLoadingData(false);
   }, [supabase, preselectedPropertyId]);
 
@@ -185,32 +147,32 @@ function CriarPageContent() {
         lote: "Lote",
         comercial: "Comercial",
         cobertura: "Cobertura",
-        chacara: "Chácara",
+        chacara: "Chacara",
       };
-      const label = typeLabel[selectedProperty.type] ?? "Imóvel";
+      const label = typeLabel[selectedProperty.type] ?? "Imovel";
       const price = formatCurrency(selectedProperty.price_cents);
-      setHeadline(`${label} à venda — ${price}`);
+      setHeadline(`${label} a venda - ${price}`);
       const extras = [
         selectedProperty.bedrooms
           ? `${selectedProperty.bedrooms} quartos`
           : "",
-        selectedProperty.area_sqm ? `${selectedProperty.area_sqm}m²` : "",
+        selectedProperty.area_sqm ? `${selectedProperty.area_sqm}m2` : "",
         selectedProperty.city ?? "",
       ]
         .filter(Boolean)
-        .join(" · ");
+        .join(" - ");
       if (extras) setCopyText(extras);
     }
   }, [selectedProperty, headline]);
 
   async function handleGenerate() {
-    if (!selectedProperty || !selectedCategory) return;
+    if (!selectedProperty || !userPrompt.trim()) return;
     setGenerating(true);
     setGenError(null);
     setGeneratedUrls([]);
     setGeneratedIds([]);
     setGeneratedCopy(null);
-    setStep(5);
+    setStep(4);
 
     try {
       const res = await fetch("/api/generate-creative", {
@@ -218,7 +180,7 @@ function CriarPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           property_id: selectedProperty.id,
-          category: selectedCategory.slug,
+          prompt: userPrompt,
           format: selectedFormat,
           creative_type: selectedType,
           headline,
@@ -251,7 +213,7 @@ function CriarPageContent() {
       }
 
       if (!data) {
-        setGenError(fallbackError ?? "Resposta inválida do servidor");
+        setGenError(fallbackError ?? "Resposta invalida do servidor");
         return;
       }
 
@@ -261,8 +223,8 @@ function CriarPageContent() {
     } catch (err) {
       setGenError(
         err instanceof Error && err.message
-          ? `Falha na conexão com o servidor: ${err.message}`
-          : "Falha na conexão com o servidor. Tente novamente."
+          ? `Falha na conexao com o servidor: ${err.message}`
+          : "Falha na conexao com o servidor. Tente novamente."
       );
     } finally {
       setGenerating(false);
@@ -298,9 +260,8 @@ function CriarPageContent() {
 
   const canNext =
     (step === 1 && selectedProperty !== null) ||
-    (step === 2 && selectedCategory !== null) ||
-    (step === 3 && true) ||
-    (step === 4 && headline.length > 0);
+    (step === 2 && true) ||
+    (step === 3 && userPrompt.trim().length > 0);
 
   if (loadingData) {
     return (
@@ -365,21 +326,22 @@ function CriarPageContent() {
 
       {/* Step content */}
       <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-6">
+
         {/* Step 1: Select Property */}
         {step === 1 && (
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-white mb-4">
-              Selecione o imóvel
+              Selecione o imovel
             </h2>
             {properties.length === 0 ? (
               <div className="text-center py-12">
                 <Building2 className="w-10 h-10 text-white/20 mx-auto mb-3" />
-                <p className="text-white/70 mb-4">Nenhum imóvel cadastrado</p>
+                <p className="text-white/70 mb-4">Nenhum imovel cadastrado</p>
                 <a
                   href="/dashboard/imoveis"
                   className="inline-flex items-center gap-2 bg-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-600 transition-all"
                 >
-                  Cadastrar imóvel
+                  Cadastrar imovel
                 </a>
               </div>
             ) : (
@@ -420,7 +382,7 @@ function CriarPageContent() {
                           )}
                           {p.area_sqm && (
                             <span className="flex items-center gap-1">
-                              <Maximize2 className="w-3 h-3" /> {p.area_sqm}m²
+                              <Maximize2 className="w-3 h-3" /> {p.area_sqm}m2
                             </span>
                           )}
                         </div>
@@ -436,65 +398,8 @@ function CriarPageContent() {
           </div>
         )}
 
-        {/* Step 2: Select Category */}
+        {/* Step 2: Format + Model + Type */}
         {step === 2 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-white mb-1">
-              Escolha o estilo do criativo
-            </h2>
-            <p className="text-white/60 text-sm mb-4">
-              Cada categoria possui um prompt especializado para gerar imagens
-              únicas
-            </p>
-
-            {categories.length === 0 ? (
-              <div className="text-center py-12">
-                <Sparkles className="w-10 h-10 text-white/20 mx-auto mb-3" />
-                <p className="text-white/70">
-                  Nenhuma categoria disponível
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {categories.map((cat) => {
-                  const icon = CATEGORY_ICONS[cat.slug] ?? "📌";
-                  const isSelected = selectedCategory?.id === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`relative flex flex-col items-center gap-3 p-5 rounded-xl border transition-all text-center ${
-                        isSelected
-                          ? "border-brand-500/60 bg-brand-500/10 ring-1 ring-brand-500/30"
-                          : "border-white/8 bg-white/3 hover:border-white/20 hover:bg-white/5"
-                      }`}
-                    >
-                      <span className="text-3xl">{icon}</span>
-                      <div>
-                        <p className="text-white font-semibold text-sm">
-                          {cat.label}
-                        </p>
-                        {cat.description && (
-                          <p className="text-white/60 text-xs mt-1 line-clamp-2">
-                            {cat.description}
-                          </p>
-                        )}
-                      </div>
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center">
-                          <CheckCircle2 className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 3: Format + Type */}
-        {step === 3 && (
           <div className="space-y-6">
             <h2 className="text-lg font-bold text-white">Formato e Tipo</h2>
 
@@ -512,7 +417,7 @@ function CriarPageContent() {
                         : "border-white/8 bg-white/3 hover:border-white/20"
                     }`}
                   >
-                    <span className="text-2xl">{f.icon}</span>
+                    <LayoutGrid className="w-6 h-6 text-white/60" />
                     <div className="text-center">
                       <p className="text-white font-semibold text-sm">
                         {f.label}
@@ -529,7 +434,7 @@ function CriarPageContent() {
               <p className="text-sm text-white/60 font-medium mb-3">Modelo de IA</p>
               <div className="flex gap-2">
                 {[
-                  { id: "flash" as const, label: "Flash", desc: "Rápido e econômico" },
+                  { id: "flash" as const, label: "Flash", desc: "Rapido e economico" },
                   { id: "pro" as const, label: "Pro", desc: "Maior qualidade" },
                 ].map((m) => (
                   <button
@@ -572,111 +477,130 @@ function CriarPageContent() {
           </div>
         )}
 
-        {/* Step 4: Copy */}
-        {step === 4 && (
+        {/* Step 3: Prompt + Copy */}
+        {step === 3 && (
           <div className="space-y-5">
-            <div className="flex items-start justify-between">
-              <h2 className="text-lg font-bold text-white">
-                Personalize o texto
-              </h2>
-              <span className="text-xs bg-white/5 text-white/60 px-2 py-1 rounded-lg">
-                Gerado automaticamente — edite como quiser
-              </span>
-            </div>
-
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">
-                Headline <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                value={headline}
-                onChange={(e) => setHeadline(e.target.value)}
-                maxLength={80}
-                placeholder="Ex: Apartamento 2 quartos em São Paulo — R$ 350.000"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
-              />
-              <p className="text-white/50 text-xs mt-1 text-right">
-                {headline.length}/80
+              <h2 className="text-lg font-bold text-white mb-1">
+                Escreva o prompt da imagem
+              </h2>
+              <p className="text-white/50 text-sm">
+                Descreva o que voce quer que a IA gere. Seja especifico sobre estilo, cores, composicao e texto a exibir.
               </p>
             </div>
 
+            {/* Prompt textarea */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-2">
-                Descrição
+                Prompt <span className="text-red-400">*</span>
               </label>
               <textarea
-                value={copyText}
-                onChange={(e) => setCopyText(e.target.value)}
-                maxLength={200}
-                rows={3}
-                placeholder="Ex: 3 quartos · 80m² · Jardim Paulista · Documentação ok"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all resize-none"
+                value={userPrompt}
+                onChange={(e) => setUserPrompt(e.target.value)}
+                rows={6}
+                maxLength={2000}
+                placeholder="Ex: Crie um post para Instagram de um apartamento de luxo em Sao Paulo. Estilo moderno e sofisticado, tons escuros com dourado. Inclua headline 'Apartamento Exclusivo' em destaque, preco R$ 1.2M abaixo. A foto do imovel deve ser o hero. Logo da imobiliaria no canto inferior direito."
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm focus:outline-none focus:border-brand-500/60 transition-all resize-none"
               />
-              <p className="text-white/50 text-xs mt-1 text-right">
-                {copyText.length}/200
+              <p className="text-white/40 text-xs mt-1 text-right">
+                {userPrompt.length}/2000
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">
-                Chamada para ação (CTA)
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  "Saiba mais",
-                  "Entre em contato",
-                  "Agende uma visita",
-                  "Investir agora",
-                ].map((cta) => (
-                  <button
-                    key={cta}
-                    onClick={() => setCtaText(cta)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                      ctaText === cta
-                        ? "bg-brand-500/20 border-brand-500/50 text-brand-400"
-                        : "bg-white/5 border-white/10 text-white/70 hover:border-white/25"
-                    }`}
-                  >
-                    {cta}
-                  </button>
-                ))}
+            {/* Headline / Copy / CTA */}
+            <div className="border-t border-white/8 pt-5 space-y-4">
+              <p className="text-xs text-white/40 uppercase tracking-wide font-medium">
+                Metadados do criativo (opcional)
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Headline
+                </label>
+                <input
+                  type="text"
+                  value={headline}
+                  onChange={(e) => setHeadline(e.target.value)}
+                  maxLength={80}
+                  placeholder="Ex: Apartamento 2 quartos em Sao Paulo - R$ 350.000"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
+                />
+                <p className="text-white/40 text-xs mt-1 text-right">
+                  {headline.length}/80
+                </p>
               </div>
-              <input
-                type="text"
-                value={ctaText}
-                onChange={(e) => setCtaText(e.target.value)}
-                placeholder="Ou escreva o seu..."
-                className="w-full mt-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
-              />
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Descricao
+                </label>
+                <textarea
+                  value={copyText}
+                  onChange={(e) => setCopyText(e.target.value)}
+                  maxLength={200}
+                  rows={2}
+                  placeholder="Ex: 3 quartos - 80m2 - Jardim Paulista - Documentacao ok"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Chamada para acao (CTA)
+                </label>
+                <div className="flex gap-2 flex-wrap mb-2">
+                  {[
+                    "Saiba mais",
+                    "Entre em contato",
+                    "Agende uma visita",
+                    "Investir agora",
+                  ].map((cta) => (
+                    <button
+                      key={cta}
+                      onClick={() => setCtaText(cta)}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                        ctaText === cta
+                          ? "bg-brand-500/20 border-brand-500/50 text-brand-400"
+                          : "bg-white/5 border-white/10 text-white/70 hover:border-white/25"
+                      }`}
+                    >
+                      {cta}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={ctaText}
+                  onChange={(e) => setCtaText(e.target.value)}
+                  placeholder="Ou escreva o seu..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
+                />
+              </div>
             </div>
 
-            {/* Preview summary */}
-            {selectedProperty && selectedCategory && (
+            {/* Summary */}
+            {selectedProperty && (
               <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm">
                 <p className="text-white/60 text-xs font-medium mb-2 uppercase tracking-wide">
                   Resumo
                 </p>
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-white/70">Imóvel</span>
+                    <span className="text-white/70">Imovel</span>
                     <span className="text-white truncate max-w-[60%] text-right">
                       {selectedProperty.title}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/70">Categoria</span>
+                    <span className="text-white/70">Formato</span>
                     <span className="text-white">
-                      {CATEGORY_ICONS[selectedCategory.slug] ?? "📌"}{" "}
-                      {selectedCategory.label}
+                      {FORMATS.find((f) => f.id === selectedFormat)?.label} -{" "}
+                      {selectedFormat}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/70">Formato</span>
-                    <span className="text-white">
-                      {FORMATS.find((f) => f.id === selectedFormat)?.label} —{" "}
-                      {selectedFormat}
-                    </span>
+                    <span className="text-white/70">Modelo</span>
+                    <span className="text-white capitalize">{selectedModel}</span>
                   </div>
                 </div>
               </div>
@@ -684,8 +608,8 @@ function CriarPageContent() {
           </div>
         )}
 
-        {/* Step 5: Result */}
-        {step === 5 && (
+        {/* Step 4: Result */}
+        {step === 4 && (
           <div className="space-y-6">
             <h2 className="text-lg font-bold text-white">
               {generating
@@ -707,7 +631,7 @@ function CriarPageContent() {
                     Processando com IA...
                   </p>
                   <p className="text-white/60 text-sm mt-1">
-                    Gerando imagem IA + mockups · pode levar até 60 segundos
+                    Gerando imagem IA + mockups - pode levar ate 60 segundos
                   </p>
                 </div>
               </div>
@@ -715,12 +639,12 @@ function CriarPageContent() {
               <div className="space-y-6">
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 text-center">
                   <p className="text-red-400 font-medium mb-1">
-                    Erro na geração da imagem IA
+                    Erro na geracao da imagem IA
                   </p>
                   <p className="text-red-400/70 text-sm">{genError}</p>
                   <button
                     onClick={() => {
-                      setStep(4);
+                      setStep(3);
                       setGenError(null);
                     }}
                     className="mt-4 text-sm text-white/70 hover:text-white underline"
@@ -819,11 +743,11 @@ function CriarPageContent() {
                           >
                             <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/30">
                               <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-lg font-medium z-10">
-                                Variação {idx + 1}
+                                Variacao {idx + 1}
                               </div>
                               <Image
                                 src={url}
-                                alt={`Criativo variação ${idx + 1}`}
+                                alt={`Criativo variacao ${idx + 1}`}
                                 width={540}
                                 height={540}
                                 className="w-full object-contain max-h-[400px]"
@@ -860,7 +784,7 @@ function CriarPageContent() {
                             className="rounded-xl border border-white/8 bg-white/3 p-8 flex flex-col items-center justify-center text-center"
                           >
                             <p className="text-white/50 text-sm">
-                              Variação {idx + 1} — falhou
+                              Variacao {idx + 1} - falhou
                             </p>
                           </div>
                         )
@@ -909,14 +833,14 @@ function CriarPageContent() {
                       <Wand2 className="w-5 h-5 text-amber-400" />
                     </div>
                     <p className="text-white font-semibold mb-1">
-                      Não foi possível gerar
+                      Nao foi possivel gerar
                     </p>
                     <p className="text-white/60 text-sm mb-4">
-                      A IA não retornou resultados. Tente novamente.
+                      A IA nao retornou resultados. Tente novamente.
                     </p>
                     <button
                       onClick={() => {
-                        setStep(4);
+                        setStep(3);
                       }}
                       className="text-brand-400 hover:text-brand-300 text-sm underline"
                     >
@@ -933,9 +857,9 @@ function CriarPageContent() {
                   onClick={() => {
                     setStep(1);
                     setSelectedProperty(null);
-                    setSelectedCategory(null);
                     setSelectedFormat("1080x1080");
                     setSelectedType("post");
+                    setUserPrompt("");
                     setHeadline("");
                     setCopyText("");
                     setCtaText("Saiba mais");
@@ -961,7 +885,7 @@ function CriarPageContent() {
       </div>
 
       {/* Navigation */}
-      {step < 5 && (
+      {step < 4 && (
         <div className="flex items-center justify-between">
           <button
             onClick={() => step > 1 && setStep((s) => s - 1)}
@@ -972,13 +896,13 @@ function CriarPageContent() {
             Voltar
           </button>
 
-          {step < 4 ? (
+          {step < 3 ? (
             <button
               onClick={() => setStep((s) => s + 1)}
               disabled={!canNext}
               className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-all"
             >
-              Próximo
+              Proximo
               <ChevronRight className="w-4 h-4" />
             </button>
           ) : (

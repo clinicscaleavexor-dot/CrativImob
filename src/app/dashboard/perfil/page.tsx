@@ -6,8 +6,6 @@ import {
   Building2,
   Phone,
   BadgeCheck,
-  Palette,
-  Upload,
   Loader2,
   CheckCircle2,
   Camera,
@@ -21,13 +19,6 @@ import type { Tables } from "@/types/database";
 
 type Profile = Tables<"profiles">;
 
-interface BrandColors {
-  primary: string;
-  secondary: string;
-}
-
-const DEFAULT_COLORS: BrandColors = { primary: "#2563eb", secondary: "#0f172a" };
-
 export default function PerfilPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +29,6 @@ export default function PerfilPage() {
   const [companyName, setCompanyName] = useState("");
   const [phone, setPhone] = useState("");
   const [creci, setCreci] = useState("");
-  const [brandColors, setBrandColors] = useState<BrandColors>(DEFAULT_COLORS);
 
   // Briefing fields
   const [companyDescription, setCompanyDescription] = useState("");
@@ -72,10 +62,6 @@ export default function PerfilPage() {
         setCompanyName(data.company_name ?? "");
         setPhone(data.phone ?? "");
         setCreci(data.creci ?? "");
-        const colors = data.brand_colors as BrandColors | null;
-        if (colors?.primary) {
-          setBrandColors({ primary: colors.primary, secondary: colors.secondary ?? DEFAULT_COLORS.secondary });
-        }
         setCompanyDescription(data.company_description ?? "");
         setBrandPersonality(data.brand_personality ?? "");
         setTargetAudience(data.target_audience ?? "");
@@ -100,7 +86,6 @@ export default function PerfilPage() {
         company_name: companyName || null,
         phone: phone || null,
         creci: creci || null,
-        brand_colors: brandColors,
         company_description: companyDescription || null,
         brand_personality: brandPersonality || null,
         target_audience: targetAudience || null,
@@ -289,8 +274,7 @@ export default function PerfilPage() {
 
       {/* Identidade Visual */}
       <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wide flex items-center gap-2">
-          <Palette className="w-4 h-4" />
+        <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wide">
           Identidade Visual da Marca
         </h2>
 
@@ -329,63 +313,6 @@ export default function PerfilPage() {
           />
         </div>
 
-        {/* Brand colors */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-2">Cor primária</label>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-lg border border-white/20 cursor-pointer flex-shrink-0"
-                style={{ backgroundColor: brandColors.primary }}
-                onClick={() => document.getElementById("colorPrimary")?.click()}
-              />
-              <input
-                id="colorPrimary"
-                type="color"
-                value={brandColors.primary}
-                onChange={(e) => setBrandColors((p) => ({ ...p, primary: e.target.value }))}
-                className="hidden"
-              />
-              <input
-                type="text"
-                value={brandColors.primary}
-                onChange={(e) => setBrandColors((p) => ({ ...p, primary: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-brand-500/60 transition-all"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-2">Cor secundária</label>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-lg border border-white/20 cursor-pointer flex-shrink-0"
-                style={{ backgroundColor: brandColors.secondary }}
-                onClick={() => document.getElementById("colorSecondary")?.click()}
-              />
-              <input
-                id="colorSecondary"
-                type="color"
-                value={brandColors.secondary}
-                onChange={(e) => setBrandColors((p) => ({ ...p, secondary: e.target.value }))}
-                className="hidden"
-              />
-              <input
-                type="text"
-                value={brandColors.secondary}
-                onChange={(e) => setBrandColors((p) => ({ ...p, secondary: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-brand-500/60 transition-all"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Color preview */}
-        <div
-          className="h-16 rounded-xl overflow-hidden flex items-center justify-center"
-          style={{ background: `linear-gradient(135deg, ${brandColors.primary}, ${brandColors.secondary})` }}
-        >
-          <p className="text-white font-bold drop-shadow text-sm">Preview da marca</p>
-        </div>
       </div>
 
       {/* Briefing da Imobiliária */}
