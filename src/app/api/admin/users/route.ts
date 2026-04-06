@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export async function GET() {
   const supabase = await createClient();
@@ -11,17 +11,34 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data: profiles, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, company_name, email, created_at, plan_id")
-    .order("created_at", { ascending: false });
+  // Use service role to list auth.users (profiles.email can be null)
+  const serviceClient = await createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: authData, error: authError } = await (serviceClient as any).auth.admin.listUsers();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (authError) {
+    return NextResponse.json({ error: authError.message }, { status: 500 });
   }
 
+  const authUsers: { id: string; email: string; created_at: string }[] = (authData?.users ?? []).map(
+    (u: { id: string; email?: string; created_at: string }) => ({
+      id: u.id,
+      email: u.email ?? "",
+      created_at: u.created_at,
+    })
+  );
+
+  // Get profiles for names
+  const { data: profiles } = await serviceClient
+    .from("profiles")
+    .select("id, full_name, company_name");
+
+  const profileMap = new Map(
+    (profiles ?? []).map((p: { id: string; full_name: string | null; company_name: string | null }) => [p.id, p])
+  );
+
   // Get credits for all users
-  const { data: credits } = await supabase
+  const { data: credits } = await serviceClient
     .from("credits")
     .select("user_id, balance");
 
@@ -29,14 +46,17 @@ export async function GET() {
     (credits ?? []).map((c: { user_id: string; balance: number }) => [c.user_id, c.balance])
   );
 
-  const users = (profiles ?? []).map((p: { id: string; full_name: string | null; company_name: string | null; email: string | null; created_at: string; plan_id: string | null }) => ({
-    id: p.id,
-    full_name: p.full_name,
-    company_name: p.company_name,
-    email: p.email,
-    created_at: p.created_at,
-    credits: creditsMap.get(p.id) ?? 0,
-  }));
+  const users = authUsers.map((au) => {
+    const prof = profileMap.get(au.id) as { full_name: string | null; company_name: string | null } | undefined;
+    return {
+      id: au.id,
+      full_name: prof?.full_name ?? null,
+      company_name: prof?.company_name ?? null,
+      email: au.email,
+      created_at: au.created_at,
+      credits: creditsMap.get(au.id) ?? 0,
+    };
+  });
 
   return NextResponse.json({ users });
 }

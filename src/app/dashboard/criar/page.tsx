@@ -21,6 +21,7 @@ import {
   ImageIcon,
   X,
 } from "lucide-react";
+import { downloadImage } from "@/lib/download-image";
 
 interface UploadedImage {
   base64: string;
@@ -247,6 +248,7 @@ export default function CriarPage() {
       setGeneratedIds(data?.creative_ids ?? []);
       setGeneratedUrls(data?.image_urls ?? []);
       setGeneratedCopy(data?.generated_copy ?? null);
+      router.refresh();
     } catch (err) {
       setGenError(
         err instanceof Error
@@ -272,12 +274,7 @@ export default function CriarPage() {
   async function downloadAll() {
     const validUrls = generatedUrls.filter((u): u is string => !!u);
     for (let i = 0; i < validUrls.length; i++) {
-      const a = document.createElement("a");
-      a.href = validUrls[i];
-      a.download = `criativo-${i + 1}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      await downloadImage(validUrls[i], `criativo-${i + 1}.png`);
       await new Promise((r) => setTimeout(r, 300));
     }
   }
@@ -323,14 +320,13 @@ export default function CriarPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <a
-                  href={url}
-                  download={`criativo-${idx + 1}-${ids[idx] ?? "img"}.png`}
+                <button
+                  onClick={() => downloadImage(url, `criativo-${idx + 1}-${ids[idx] ?? "img"}.png`)}
                   className="flex-1 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-xl font-semibold text-xs transition-all"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Baixar
-                </a>
+                </button>
                 <button
                   onClick={() => {
                     if (navigator.share) {

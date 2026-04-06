@@ -11,7 +11,6 @@ import {
   Plus,
   LogOut,
   Shield,
-  Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -21,7 +20,6 @@ const navItems = [
   { href: "/dashboard/criativos", label: "Criativos", icon: ImageIcon },
   { href: "/dashboard/imoveis", label: "Imóveis", icon: Building2 },
   { href: "/dashboard/perfil", label: "Perfil & Marca", icon: User },
-  { href: "/dashboard/leads", label: "Leads", icon: Users },
   { href: "/dashboard/plano", label: "Plano", icon: CreditCard },
 ];
 
