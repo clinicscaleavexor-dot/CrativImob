@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { generateMockup, generateMockupFromBase64 } from "@/lib/make-mockup";
 
 // Extend Vercel serverless function timeout to 60s for AI image generation
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createServiceClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any;
 
@@ -155,17 +155,25 @@ export async function POST(request: NextRequest) {
     const logoUrl = profile.company_logo_url ?? null;
 
     // 4. Debit 1 credit
-    await db
+    const { error: creditError } = await db
       .from("credits")
       .update({ balance: creditsRow.balance - 1 })
       .eq("user_id", user.id);
 
-    await db.from("credits_transactions").insert({
+    if (creditError) {
+      console.error("[credits] deduction failed:", creditError);
+    }
+
+    const { error: txError } = await db.from("credits_transactions").insert({
       user_id: user.id,
       amount: -1,
       type: "debit",
       description: `Geracao de criativo (${format})`,
     });
+
+    if (txError) {
+      console.error("[credits_transactions] insert failed:", txError);
+    }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
@@ -361,6 +369,9 @@ export async function POST(request: NextRequest) {
           .single();
 
         const creative = creativeRaw as CreativeId | null;
+        if (createError) {
+          console.error("[creatives] insert failed (new-flow):", createError);
+        }
         if (!createError && creative) creativeIds.push(creative.id);
         imageUrls.push(imageUrl);
       }
@@ -552,6 +563,9 @@ export async function POST(request: NextRequest) {
         .single();
 
       const creative = creativeRaw as CreativeId | null;
+      if (createError) {
+        console.error("[creatives] insert failed (legacy-flow):", createError);
+      }
       if (!createError && creative) creativeIds.push(creative.id);
       imageUrls.push(imageUrl);
     }
