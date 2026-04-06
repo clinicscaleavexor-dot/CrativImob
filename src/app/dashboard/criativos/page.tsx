@@ -1,12 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import CriativosClient from "./CriativosClient";
 import type { Tables } from "@/types/database";
 
-type Creative = Tables<"creatives"> & {
-  properties: Pick<Tables<"properties">, "title" | "type"> | null;
-  templates: Pick<Tables<"templates">, "name"> | null;
-};
+type Creative = Tables<"creatives">;
 
 export default async function CriativosPage() {
   const supabase = await createClient();
@@ -17,15 +14,10 @@ export default async function CriativosPage() {
 
   if (!user) redirect("/login");
 
-  const { data: creatives } = await supabase
+  const serviceClient = createServiceClient();
+  const { data: creatives } = await serviceClient
     .from("creatives")
-    .select(
-      `
-      *,
-      properties (title, type),
-      templates (name)
-    `
-    )
+    .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);

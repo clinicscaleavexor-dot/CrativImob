@@ -78,8 +78,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
   }
 
+  const serviceClient = createServiceClient();
+
   // Get current balance
-  const { data: current } = await supabase
+  const { data: current } = await serviceClient
     .from("credits")
     .select("balance")
     .eq("user_id", user_id)
@@ -90,7 +92,7 @@ export async function PATCH(req: NextRequest) {
 
   // Upsert credits
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: creditError } = await (supabase as any)
+  const { error: creditError } = await (serviceClient as any)
     .from("credits")
     .upsert({ user_id, balance: newBalance }, { onConflict: "user_id" });
 
@@ -100,7 +102,7 @@ export async function PATCH(req: NextRequest) {
 
   // Log transaction
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("credits_transactions").insert({
+  await (serviceClient as any).from("credits_transactions").insert({
     user_id,
     amount: add_credits,
     type: "admin_grant",

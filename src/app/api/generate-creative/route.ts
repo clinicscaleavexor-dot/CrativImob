@@ -218,6 +218,15 @@ export async function POST(request: NextRequest) {
       if (promptPadrao) parts.push(promptPadrao);
       if (stylePrompt) parts.push(stylePrompt);
 
+      // Brand context
+      const brandParts: string[] = [];
+      if (profile.company_name) brandParts.push(`Empresa: ${profile.company_name}`);
+      if (profile.company_description) brandParts.push(`Descricao da empresa: ${profile.company_description}`);
+      if (profile.brand_personality) brandParts.push(`Personalidade da marca: ${profile.brand_personality}`);
+      if (profile.target_audience) brandParts.push(`Publico-alvo: ${profile.target_audience}`);
+      if (profile.preferred_style) brandParts.push(`Estilo visual preferido: ${profile.preferred_style}`);
+      if (brandParts.length > 0) parts.push(brandParts.join(". "));
+
       if (property_info) {
         parts.push(`Informacoes do imovel: ${property_info as string}`);
       }

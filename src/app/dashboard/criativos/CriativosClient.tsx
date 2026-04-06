@@ -19,10 +19,7 @@ import type { Tables } from "@/types/database";
 import { downloadImage } from "@/lib/download-image";
 import { useRouter } from "next/navigation";
 
-type Creative = Tables<"creatives"> & {
-  properties: Pick<Tables<"properties">, "title" | "type"> | null;
-  templates: Pick<Tables<"templates">, "name"> | null;
-};
+type Creative = Tables<"creatives">;
 
 const FORMAT_LABELS: Record<string, string> = {
   "1080x1080": "Post",
@@ -264,7 +261,7 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
                 <div className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-white font-semibold text-sm leading-tight line-clamp-2">
-                      {c.headline || c.properties?.title || "Sem título"}
+                      {c.headline || c.title || "Sem título"}
                     </p>
                     <span
                       className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 ${statusCfg.color}`}
@@ -276,10 +273,6 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
 
                   <div className="flex items-center justify-between text-xs text-white/50">
                     <div className="flex items-center gap-1.5">
-                      {c.templates?.name && (
-                        <span>{c.templates.name}</span>
-                      )}
-                      {c.templates?.name && <span>·</span>}
                       <span>{typeLabel}</span>
                     </div>
                     <span className="flex items-center gap-1">
