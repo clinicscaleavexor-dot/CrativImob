@@ -22,6 +22,9 @@ import {
   Sparkles,
   Copy,
   Check,
+  Upload,
+  ImageIcon,
+  X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
@@ -69,7 +72,7 @@ const CREATIVE_TYPES = [
 ];
 
 const STEPS = [
-  { id: 1, label: "Imovel", icon: Building2 },
+  { id: 1, label: "Imagem", icon: ImageIcon },
   { id: 2, label: "Formato", icon: LayoutGrid },
   { id: 3, label: "Prompt", icon: Sparkles },
   { id: 4, label: "Resultado", icon: Eye },
@@ -89,6 +92,7 @@ function CriarPageContent() {
   const [selectedFormat, setSelectedFormat] = useState("1080x1080");
   const [selectedType, setSelectedType] = useState("post");
   const [selectedModel, setSelectedModel] = useState<"flash" | "pro">("flash");
+  const [uploadedImage, setUploadedImage] = useState<{ base64: string; mimeType: string; preview: string } | null>(null);
 
   // Prompt and copy
   const [userPrompt, setUserPrompt] = useState("");
@@ -166,7 +170,8 @@ function CriarPageContent() {
   }, [selectedProperty, headline]);
 
   async function handleGenerate() {
-    if (!selectedProperty || !userPrompt.trim()) return;
+    if (!userPrompt.trim()) return;
+    if (!selectedProperty && !uploadedImage) return;
     setGenerating(true);
     setGenError(null);
     setGeneratedUrls([]);
@@ -175,19 +180,27 @@ function CriarPageContent() {
     setStep(4);
 
     try {
+      const payload: Record<string, unknown> = {
+        prompt: userPrompt,
+        format: selectedFormat,
+        creative_type: selectedType,
+        headline,
+        copy_text: copyText,
+        cta_text: ctaText,
+        model: selectedModel,
+      };
+      if (selectedProperty) {
+        payload.property_id = selectedProperty.id;
+      }
+      if (uploadedImage) {
+        payload.image_base64 = uploadedImage.base64;
+        payload.image_mime_type = uploadedImage.mimeType;
+      }
+
       const res = await fetch("/api/generate-creative", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          property_id: selectedProperty.id,
-          prompt: userPrompt,
-          format: selectedFormat,
-          creative_type: selectedType,
-          headline,
-          copy_text: copyText,
-          cta_text: ctaText,
-          model: selectedModel,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const rawResponse = await res.text();
@@ -259,7 +272,7 @@ function CriarPageContent() {
   }
 
   const canNext =
-    (step === 1 && selectedProperty !== null) ||
+    (step === 1 && (selectedProperty !== null || uploadedImage !== null)) ||
     (step === 2 && true) ||
     (step === 3 && userPrompt.trim().length > 0);
 
@@ -327,74 +340,137 @@ function CriarPageContent() {
       {/* Step content */}
       <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-6">
 
-        {/* Step 1: Select Property */}
+        {/* Step 1: Image Source */}
         {step === 1 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-white mb-4">
-              Selecione o imovel
+          <div className="space-y-6">
+            <h2 className="text-lg font-bold text-white mb-2">
+              Escolha a imagem
             </h2>
-            {properties.length === 0 ? (
-              <div className="text-center py-12">
-                <Building2 className="w-10 h-10 text-white/20 mx-auto mb-3" />
-                <p className="text-white/70 mb-4">Nenhum imovel cadastrado</p>
-                <a
-                  href="/dashboard/imoveis"
-                  className="inline-flex items-center gap-2 bg-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-600 transition-all"
-                >
-                  Cadastrar imovel
-                </a>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {properties.map((p) => (
+            <p className="text-white/50 text-sm">
+              Envie uma foto do imovel ou selecione um imovel cadastrado.
+            </p>
+
+            {/* Direct Upload */}
+            <div>
+              <p className="text-sm text-white/60 font-medium mb-3">Upload direto</p>
+              {uploadedImage ? (
+                <div className="relative inline-block">
+                  <img
+                    src={uploadedImage.preview}
+                    alt="Upload"
+                    className="h-40 rounded-xl border border-white/10 object-cover"
+                  />
                   <button
-                    key={p.id}
-                    onClick={() => setSelectedProperty(p)}
-                    className={`w-full text-left p-4 rounded-xl border transition-all ${
-                      selectedProperty?.id === p.id
-                        ? "border-brand-500/60 bg-brand-500/10"
-                        : "border-white/8 bg-white/3 hover:border-white/20 hover:bg-white/5"
-                    }`}
+                    onClick={() => setUploadedImage(null)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-all"
                   >
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-brand-400 bg-brand-500/15 px-2 py-0.5 rounded-full capitalize">
-                            {p.type}
-                          </span>
-                        </div>
-                        <p className="text-white font-semibold">{p.title}</p>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-white/60 text-xs">
-                          {p.city && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" /> {p.city}
-                            </span>
-                          )}
-                          {p.bedrooms != null && p.bedrooms > 0 && (
-                            <span className="flex items-center gap-1">
-                              <BedDouble className="w-3 h-3" /> {p.bedrooms}
-                            </span>
-                          )}
-                          {p.bathrooms != null && p.bathrooms > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Bath className="w-3 h-3" /> {p.bathrooms}
-                            </span>
-                          )}
-                          {p.area_sqm && (
-                            <span className="flex items-center gap-1">
-                              <Maximize2 className="w-3 h-3" /> {p.area_sqm}m2
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-white font-bold text-lg whitespace-nowrap">
-                        {formatCurrency(p.price_cents)}
-                      </p>
-                    </div>
+                    <X className="w-3 h-3" />
                   </button>
-                ))}
-              </div>
-            )}
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-white/15 hover:border-brand-500/40 rounded-xl p-8 cursor-pointer transition-all hover:bg-white/3">
+                  <Upload className="w-8 h-8 text-white/30" />
+                  <span className="text-white/50 text-sm">Clique ou arraste uma imagem</span>
+                  <span className="text-white/30 text-xs">JPG, PNG ou WebP ate 10MB</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 10 * 1024 * 1024) {
+                        alert("Imagem muito grande. Maximo 10MB.");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const result = reader.result as string;
+                        const base64 = result.split(",")[1];
+                        setUploadedImage({
+                          base64,
+                          mimeType: file.type,
+                          preview: result,
+                        });
+                        setSelectedProperty(null);
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-white/10" />
+              <span className="text-white/30 text-xs font-medium">OU</span>
+              <div className="flex-1 h-px bg-white/10" />
+            </div>
+
+            {/* Select from properties */}
+            <div>
+              <p className="text-sm text-white/60 font-medium mb-3">Selecionar imovel cadastrado</p>
+              {properties.length === 0 ? (
+                <div className="text-center py-6">
+                  <Building2 className="w-8 h-8 text-white/15 mx-auto mb-2" />
+                  <p className="text-white/50 text-sm">Nenhum imovel cadastrado</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 max-h-[300px] overflow-y-auto pr-1">
+                  {properties.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setSelectedProperty(p);
+                        setUploadedImage(null);
+                      }}
+                      className={`w-full text-left p-4 rounded-xl border transition-all ${
+                        selectedProperty?.id === p.id
+                          ? "border-brand-500/60 bg-brand-500/10"
+                          : "border-white/8 bg-white/3 hover:border-white/20 hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-brand-400 bg-brand-500/15 px-2 py-0.5 rounded-full capitalize">
+                              {p.type}
+                            </span>
+                          </div>
+                          <p className="text-white font-semibold">{p.title}</p>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-white/60 text-xs">
+                            {p.city && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" /> {p.city}
+                              </span>
+                            )}
+                            {p.bedrooms != null && p.bedrooms > 0 && (
+                              <span className="flex items-center gap-1">
+                                <BedDouble className="w-3 h-3" /> {p.bedrooms}
+                              </span>
+                            )}
+                            {p.bathrooms != null && p.bathrooms > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Bath className="w-3 h-3" /> {p.bathrooms}
+                              </span>
+                            )}
+                            {p.area_sqm && (
+                              <span className="flex items-center gap-1">
+                                <Maximize2 className="w-3 h-3" /> {p.area_sqm}m2
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-white font-bold text-lg whitespace-nowrap">
+                          {formatCurrency(p.price_cents)}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -579,16 +655,16 @@ function CriarPageContent() {
             </div>
 
             {/* Summary */}
-            {selectedProperty && (
+            {(selectedProperty || uploadedImage) && (
               <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm">
                 <p className="text-white/60 text-xs font-medium mb-2 uppercase tracking-wide">
                   Resumo
                 </p>
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-white/70">Imovel</span>
+                    <span className="text-white/70">Imagem</span>
                     <span className="text-white truncate max-w-[60%] text-right">
-                      {selectedProperty.title}
+                      {selectedProperty ? selectedProperty.title : "Upload direto"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -857,6 +933,7 @@ function CriarPageContent() {
                   onClick={() => {
                     setStep(1);
                     setSelectedProperty(null);
+                    setUploadedImage(null);
                     setSelectedFormat("1080x1080");
                     setSelectedType("post");
                     setUserPrompt("");

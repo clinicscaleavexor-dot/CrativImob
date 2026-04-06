@@ -67,10 +67,10 @@ const FORMAT_CONFIGS: Record<
   },
 };
 
-// Model names
-const FLASH_MODEL = "gemini-3.1-flash-image-preview";   // Nano Banana 2
-const PRO_MODEL = "gemini-3-pro-image-preview";           // Nano Banana Pro
-const LEGACY_FLASH_MODEL = "gemini-2.5-flash-image";      // last resort
+// Model names — gemini-2.5-flash-image is confirmed working, always try first
+const PRIMARY_FLASH_MODEL = "gemini-2.5-flash-image";
+const SECONDARY_FLASH_MODEL = "gemini-3.1-flash-image-preview";
+const PRO_MODEL = "gemini-3-pro-image-preview";
 
 // ---------- POST Handler ----------
 
@@ -87,11 +87,13 @@ export async function POST(request: NextRequest) {
       copy_text,
       cta_text,
       model,
+      image_base64,
+      image_mime_type,
     } = body;
 
-    if (!property_id || !userPrompt || !format) {
+    if (!userPrompt || !format) {
       return NextResponse.json(
-        { error: "Parametros obrigatorios ausentes (property_id, prompt, format)" },
+        { error: "Parametros obrigatorios ausentes (prompt, format)" },
         { status: 400 }
       );
     }
@@ -125,21 +127,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Property (includes images and labels)
-    const { data: propertyRaw, error: propError } = await db
-      .from("properties")
-      .select("id,title,type,city,state,price_cents,bedrooms,bathrooms,area_sqm,highlights,location,images,image_labels")
-      .eq("id", property_id)
-      .eq("user_id", user.id)
-      .single();
+    // 3. Property (optional — may be null if user uploads image directly)
+    let property: PropertyRow | null = null;
+    if (property_id) {
+      const { data: propertyRaw, error: propError } = await db
+        .from("properties")
+        .select("id,title,type,city,state,price_cents,bedrooms,bathrooms,area_sqm,highlights,location,images,image_labels")
+        .eq("id", property_id)
+        .eq("user_id", user.id)
+        .single();
 
-    const property = propertyRaw as PropertyRow | null;
+      property = propertyRaw as PropertyRow | null;
 
-    if (propError || !property) {
-      return NextResponse.json(
-        { error: "Imovel nao encontrado" },
-        { status: 404 }
-      );
+      if (propError || !property) {
+        return NextResponse.json(
+          { error: "Imovel nao encontrado" },
+          { status: 404 }
+        );
+      }
     }
 
     // 4. Profile briefing
@@ -170,17 +175,27 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       amount: -1,
       type: "debit",
-      description: `Geracao de criativo: ${property.title} (${format})`,
+      description: `Geracao de criativo: ${property?.title ?? "Upload direto"} (${format})`,
     });
 
     // 6. Fetch property photo + logo as base64 for multimodal input
-    const propertyPhotoUrl = property.images?.[0] ?? null;
+    const propertyPhotoUrl = property?.images?.[0] ?? null;
     const logoUrl = profile.company_logo_url ?? null;
 
-    const [propertyPhotoPart, logoPart] = await Promise.all([
-      propertyPhotoUrl ? fetchImageAsBase64(propertyPhotoUrl) : Promise.resolve(null),
+    // If user uploaded an image directly, use that; otherwise fetch from property
+    let propertyPhotoPart: ImagePart | null = null;
+    if (image_base64 && image_mime_type) {
+      propertyPhotoPart = { inlineData: { mimeType: image_mime_type as string, data: image_base64 as string } };
+    }
+
+    const [fetchedPhotoPart, logoPart] = await Promise.all([
+      !propertyPhotoPart && propertyPhotoUrl ? fetchImageAsBase64(propertyPhotoUrl) : Promise.resolve(null),
       logoUrl ? fetchImageAsBase64(logoUrl) : Promise.resolve(null),
     ]);
+
+    if (!propertyPhotoPart && fetchedPhotoPart) {
+      propertyPhotoPart = fetchedPhotoPart;
+    }
 
     const hasPhoto = propertyPhotoPart !== null;
 
@@ -235,7 +250,7 @@ export async function POST(request: NextRequest) {
     }
 
     // If AI failed but property has additional photos, continue with mockups only
-    const hasAdditionalPhotos = (property.images?.length ?? 0) > 1;
+    const hasAdditionalPhotos = (property?.images?.length ?? 0) > 1;
     if (!image1 && !hasAdditionalPhotos) {
       console.error("AI image generation failed and no additional photos for mockups. Error:", imageGenError);
       return NextResponse.json(
@@ -249,7 +264,7 @@ export async function POST(request: NextRequest) {
 
     // Generate mockups for additional labeled photos (photos index 1+)
     const additionalPhotos: { url: string; label: string | null }[] = [];
-    if (property.images && property.images.length > 1) {
+    if (property?.images && property.images.length > 1) {
       for (let i = 1; i < property.images.length; i++) {
         const photoUrl = property.images[i];
         const label = property.image_labels?.[i] ?? null;
@@ -266,7 +281,7 @@ export async function POST(request: NextRequest) {
     // 9. Upload images to Supabase Storage and create creative records
     const imageUrls: (string | null)[] = [];
     const creativeIds: string[] = [];
-    const modelUsed = aiModelUsed ?? FLASH_MODEL;
+    const modelUsed = aiModelUsed ?? PRIMARY_FLASH_MODEL;
 
     const allImages: { base64: string | null; label: string | null; isMockup: boolean }[] = [
       { base64: image1, label: null, isMockup: false },
@@ -295,7 +310,7 @@ export async function POST(request: NextRequest) {
         .from("creatives")
         .insert({
           user_id: user.id,
-          property_id,
+          property_id: property_id ?? null,
           template_id: null,
           format,
           type: creative_type ?? "post",
@@ -368,10 +383,11 @@ async function callGeminiImage(
   aspectRatio: "1:1" | "9:16" | "16:9",
   modelPreference?: string
 ): Promise<GeneratedImage> {
+  // Always start with confirmed-working model, then try others
   const models =
     modelPreference === "pro"
-      ? [PRO_MODEL, FLASH_MODEL, LEGACY_FLASH_MODEL]
-      : [FLASH_MODEL, PRO_MODEL, LEGACY_FLASH_MODEL];
+      ? [PRO_MODEL, PRIMARY_FLASH_MODEL, SECONDARY_FLASH_MODEL]
+      : [PRIMARY_FLASH_MODEL, SECONDARY_FLASH_MODEL, PRO_MODEL];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parts: any[] = [
@@ -396,7 +412,7 @@ async function callGeminiImage(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(50000),
+        signal: AbortSignal.timeout(18000),
       });
 
       if (!res.ok) {
