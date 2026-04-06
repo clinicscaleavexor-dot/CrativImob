@@ -20,7 +20,7 @@ export async function DELETE(
     .from("creatives")
     .select("id, user_id, image_url")
     .eq("id", id)
-    .single();
+    .single() as { data: { id: string; user_id: string; image_url: string | null } | null; error: unknown };
 
   if (!creative) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
