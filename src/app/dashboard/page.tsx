@@ -128,7 +128,7 @@ export default async function DashboardPage() {
             >
               <stat.icon className={`w-4 h-4 ${stat.color}`} />
             </div>
-            <p className={`text-2xl font-black ${stat.isText ? "text-lg" : "text-white"}`}>
+            <p className={`text-2xl font-black ${stat.isText ? "text-lg text-white" : "text-white"}`}>
               {stat.value}
             </p>
             <p className="text-white/60 text-xs mt-1">{stat.label}</p>

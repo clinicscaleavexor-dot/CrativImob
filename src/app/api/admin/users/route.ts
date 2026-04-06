@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   // Use service role to list auth.users (profiles.email can be null)
-  const serviceClient = await createServiceClient();
+  const serviceClient = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: authData, error: authError } = await (serviceClient as any).auth.admin.listUsers();
 

@@ -48,7 +48,7 @@ export default async function PlanoPage() {
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "active")
-      .single(),
+      .maybeSingle(),
     supabase.from("credits").select("balance").eq("user_id", user.id).single(),
   ]);
 

@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { generateMockup, generateMockupFromBase64 } from "@/lib/make-mockup";
 
 // Extend Vercel serverless function timeout to 60s for AI image generation
@@ -104,14 +104,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createServiceClient();
+    const supabaseAuth = await createClient();
+    const supabase = createServiceClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any;
 
-    // 1. Auth
+    // 1. Auth (use cookie-based client to read JWT)
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseAuth.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
@@ -347,6 +348,7 @@ export async function POST(request: NextRequest) {
             format,
             type: creative_type ?? "post",
             status: imageUrl ? "completed" : "failed",
+            title: property_info ? (property_info as string).slice(0, 80) : `Criativo ${format}`,
             headline: headline ?? "",
             copy_text: copy_text ?? "",
             cta_text: cta_text ?? "Saiba mais",
