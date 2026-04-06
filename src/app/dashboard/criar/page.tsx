@@ -160,6 +160,8 @@ export default function CriarPage() {
   const [generatedIds, setGeneratedIds] = useState<string[]>([]);
   const [genError, setGenError] = useState<string | null>(null);
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  const [showCreditConfirm, setShowCreditConfirm] = useState(false);
+  const [userCredits, setUserCredits] = useState<number | null>(null);
 
   // Load styles when entering step 2
   useEffect(() => {
@@ -173,10 +175,26 @@ export default function CriarPage() {
     }
   }, [step, styles.length, loadingStyles]);
 
+  async function handleRequestGenerate() {
+    try {
+      const res = await fetch("/api/credits");
+      if (res.ok) {
+        const data = await res.json();
+        setUserCredits(data.balance ?? 0);
+      } else {
+        setUserCredits(0);
+      }
+    } catch {
+      setUserCredits(0);
+    }
+    setShowCreditConfirm(true);
+  }
+
   async function handleGenerate() {
     const filledPrimary = primaryImages.filter((img): img is UploadedImage => img !== null);
     if (filledPrimary.length === 0) return;
 
+    setShowCreditConfirm(false);
     setGenerating(true);
     setGenError(null);
     setGeneratedUrls([]);
@@ -835,7 +853,7 @@ export default function CriarPage() {
             </button>
           ) : (
             <button
-              onClick={handleGenerate}
+              onClick={handleRequestGenerate}
               disabled={!canNext || generating}
               className="flex items-center gap-2 bg-gradient-to-r from-brand-500 to-blue-600 hover:from-brand-400 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-brand-500/20"
             >
@@ -847,6 +865,42 @@ export default function CriarPage() {
               {generating ? "Gerando..." : "Gerar com IA"}
             </button>
           )}
+        </div>
+      )}
+
+      {/* Credit Confirmation Modal */}
+      {showCreditConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#1a2236] border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <h3 className="text-white font-bold text-lg">Confirmar geração</h3>
+            <p className="text-white/70 text-sm">
+              Esta geração consumirá <span className="text-yellow-400 font-bold">1 crédito</span>.
+            </p>
+            <p className="text-white/50 text-sm">
+              Seu saldo atual: <span className="text-yellow-400 font-bold">{userCredits ?? "..."}</span> crédito{userCredits !== 1 ? "s" : ""}
+            </p>
+            {userCredits !== null && userCredits <= 0 && (
+              <p className="text-red-400 text-sm font-medium">
+                Você não tem créditos suficientes para gerar.
+              </p>
+            )}
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setShowCreditConfirm(false)}
+                className="px-4 py-2 text-white/60 hover:text-white text-sm rounded-lg hover:bg-white/5 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={userCredits !== null && userCredits <= 0}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-brand-500 to-blue-600 hover:from-brand-400 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-xl text-sm font-semibold transition-all"
+              >
+                <Wand2 className="w-4 h-4" />
+                Confirmar e Gerar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

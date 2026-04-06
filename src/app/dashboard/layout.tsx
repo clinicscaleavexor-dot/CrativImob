@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import DashboardSidebar from "@/components/dashboard/Sidebar";
-import DashboardTopbar from "@/components/dashboard/Topbar";
+import DashboardShell from "@/components/dashboard/DashboardShell";
 import type { Tables } from "@/types/database";
 
 type ProfileRow = Pick<Tables<"profiles">, "full_name" | "company_name" | "avatar_url" | "plan_id">;
@@ -49,16 +48,13 @@ export default async function DashboardLayout({
   const userRole = (user.user_metadata?.role as string) ?? null;
 
   return (
-    <div className="min-h-screen bg-[#0f1729] flex">
-      <DashboardSidebar profile={profile} userRole={userRole} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <DashboardTopbar
-          user={user}
-          credits={credits?.balance ?? 0}
-          profile={profile}
-        />
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
-      </div>
-    </div>
+    <DashboardShell
+      user={user}
+      credits={credits?.balance ?? 0}
+      profile={profile}
+      userRole={userRole}
+    >
+      {children}
+    </DashboardShell>
   );
 }

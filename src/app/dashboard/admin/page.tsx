@@ -12,7 +12,9 @@ import {
   FileText,
   Sparkles,
   X,
+  Users,
 } from "lucide-react";
+import UsersTab from "@/components/admin/UsersTab";
 
 interface PromptCategory {
   id: string;
@@ -52,6 +54,7 @@ export default function AdminPage() {
   });
   const [addLoading, setAddLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<"prompts" | "users">("prompts");
 
   const loadCategories = useCallback(async () => {
     try {
@@ -261,7 +264,36 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Feedback */}
+      {/* Tabs */}
+      <div className="flex gap-1 bg-white/[0.03] border border-white/8 rounded-xl p-1">
+        <button
+          onClick={() => setActiveTab("prompts")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === "prompts"
+              ? "bg-brand-500/15 text-brand-400"
+              : "text-white/60 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          Prompts
+        </button>
+        <button
+          onClick={() => setActiveTab("users")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === "users"
+              ? "bg-brand-500/15 text-brand-400"
+              : "text-white/60 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Usuários
+        </button>
+      </div>
+
+      {activeTab === "users" ? (
+        <UsersTab />
+      ) : (
+      <>
       {feedback && (
         <div
           className={`px-4 py-3 rounded-xl text-sm font-medium border ${
@@ -553,6 +585,8 @@ export default function AdminPage() {
             Clique em &quot;Nova Categoria&quot; para começar
           </p>
         </div>
+      )}
+      </>
       )}
     </div>
   );

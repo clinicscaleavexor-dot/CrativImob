@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Plus, ImageIcon, Home, Zap, ArrowRight } from "lucide-react";
+import CreativeCard from "@/components/dashboard/CreativeCard";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -188,31 +189,7 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {creatives.map((creative) => (
-              <div
-                key={creative.id}
-                className="group relative bg-white/[0.04] border border-white/8 rounded-xl overflow-hidden hover:border-white/20 transition-all cursor-pointer"
-              >
-                <div
-                  className="aspect-square bg-gradient-to-br from-brand-900/50 to-blue-900/30 flex items-center justify-center"
-                >
-                  {creative.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={creative.image_url}
-                      alt={creative.title ?? "Criativo"}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon className="w-8 h-8 text-white/20" />
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="text-white text-sm font-medium truncate">
-                    {creative.title ?? "Criativo sem título"}
-                  </p>
-                  <p className="text-white/60 text-xs mt-0.5">{creative.type?.replace("_", " ")}</p>
-                </div>
-              </div>
+              <CreativeCard key={creative.id} creative={creative} />
             ))}
           </div>
         )}

@@ -13,8 +13,11 @@ import {
   XCircle,
   Loader2,
   Calendar,
+  Trash2,
 } from "lucide-react";
 import type { Tables } from "@/types/database";
+import { downloadImage } from "@/lib/download-image";
+import { useRouter } from "next/navigation";
 
 type Creative = Tables<"creatives"> & {
   properties: Pick<Tables<"properties">, "title" | "type"> | null;
@@ -71,6 +74,19 @@ interface CriativosClientProps {
 export default function CriativosClient({ initialCreatives }: CriativosClientProps) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterFormat, setFilterFormat] = useState("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const router = useRouter();
+
+  async function handleDelete(id: string) {
+    if (!confirm("Excluir este criativo?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/creatives/${id}`, { method: "DELETE" });
+      if (res.ok) router.refresh();
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const filtered = initialCreatives.filter((c) => {
     const matchStatus = filterStatus === "all" || c.status === filterStatus;
@@ -211,16 +227,28 @@ export default function CriativosClient({ initialCreatives }: CriativosClientPro
 
                   {/* Overlay on hover */}
                   {c.image_url && (
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <a
-                        href={c.image_url}
-                        download={`criativo-${c.id}.png`}
-                        className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                        onClick={(e) => e.stopPropagation()}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadImage(c.image_url!, `criativo-${c.id}.png`);
+                        }}
+                        className="flex items-center gap-1.5 bg-brand-500 hover:bg-brand-600 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-all"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-3.5 h-3.5" />
                         Baixar
-                      </a>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(c.id);
+                        }}
+                        disabled={deletingId === c.id}
+                        className="flex items-center gap-1.5 bg-red-500/80 hover:bg-red-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {deletingId === c.id ? "..." : "Excluir"}
+                      </button>
                     </div>
                   )}
 

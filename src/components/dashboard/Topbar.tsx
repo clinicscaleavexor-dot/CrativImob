@@ -1,4 +1,4 @@
-import { Zap } from "lucide-react";
+import { Zap, Menu } from "lucide-react";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 
@@ -9,12 +9,20 @@ interface TopbarProps {
     full_name?: string | null;
     company_name?: string | null;
   } | null;
+  onMenuToggle?: () => void;
 }
 
-export default function DashboardTopbar({ credits }: TopbarProps) {
+export default function DashboardTopbar({ credits, onMenuToggle }: TopbarProps) {
   return (
     <header className="h-14 border-b border-white/8 bg-white/[0.04] flex items-center justify-between px-6 flex-shrink-0">
-      <div />
+      <button
+        onClick={onMenuToggle}
+        className="md:hidden p-2 -ml-2 text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+        aria-label="Menu"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+      <div className="hidden md:block" />
       <div className="flex items-center gap-4">
         {/* Créditos */}
         <Link

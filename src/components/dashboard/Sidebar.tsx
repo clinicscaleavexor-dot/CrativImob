@@ -11,6 +11,7 @@ import {
   Plus,
   LogOut,
   Shield,
+  Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/dashboard/criativos", label: "Criativos", icon: ImageIcon },
   { href: "/dashboard/imoveis", label: "Imóveis", icon: Building2 },
   { href: "/dashboard/perfil", label: "Perfil & Marca", icon: User },
+  { href: "/dashboard/leads", label: "Leads", icon: Users },
   { href: "/dashboard/plano", label: "Plano", icon: CreditCard },
 ];
 
@@ -31,9 +33,11 @@ interface SidebarProps {
     plans?: { name?: string } | null;
   } | null;
   userRole?: string | null;
+  mobile?: boolean;
+  onClose?: () => void;
 }
 
-export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
+export default function DashboardSidebar({ profile, userRole, mobile, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -45,7 +49,7 @@ export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
   }
 
   return (
-    <aside className="hidden md:flex w-60 flex-shrink-0 flex-col bg-white/[0.04] border-r border-white/8 min-h-screen">
+    <aside className={`${mobile ? 'flex' : 'hidden md:flex'} w-60 flex-shrink-0 flex-col bg-white/[0.04] border-r border-white/8 min-h-screen`}>
       {/* Logo */}
       <div className="p-5 border-b border-white/5">
         <Link href="/dashboard" className="flex items-center gap-2">
@@ -60,6 +64,7 @@ export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
       <div className="p-4">
         <Link
           href="/dashboard/criar"
+          onClick={onClose}
           className="flex items-center justify-center gap-2 w-full bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-xl font-semibold text-sm transition-all"
         >
           <Plus className="w-4 h-4" />
@@ -77,10 +82,11 @@ export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
                   ? "bg-brand-500/15 text-brand-400"
-                  : "text-white/70 hover:text-white hover:bg-white/5"
+                  : "text-white/85 hover:text-white hover:bg-white/5"
               }`}
             >
               <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -93,10 +99,11 @@ export default function DashboardSidebar({ profile, userRole }: SidebarProps) {
         {userRole === "admin" && (
           <Link
             href="/dashboard/admin"
+            onClick={onClose}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mt-2 border-t border-white/5 pt-3 ${
               pathname.startsWith("/dashboard/admin")
                 ? "bg-amber-500/15 text-amber-400"
-                : "text-amber-500/50 hover:text-amber-400 hover:bg-amber-500/10"
+                : "text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/10"
             }`}
           >
             <Shield className="w-4 h-4 flex-shrink-0" />
