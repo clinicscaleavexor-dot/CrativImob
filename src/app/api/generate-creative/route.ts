@@ -104,10 +104,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 0. Validate service role key
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceRoleKey) {
+      console.error('[FATAL] SUPABASE_SERVICE_ROLE_KEY is empty or not set');
+      return NextResponse.json(
+        { error: 'Configuracao do servidor incompleta (service key)' },
+        { status: 500 }
+      );
+    }
+
     const supabaseAuth = await createClient();
     const supabase = createServiceClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any;
+
+    // Diagnostic: test service client connectivity
+    const { error: pingError } = await db.from('profiles').select('id').limit(1);
+    if (pingError) {
+      console.error('[FATAL] Service client cannot reach DB:', pingError.message, pingError.code, pingError.details);
+      return NextResponse.json(
+        { error: 'Erro de conectividade com banco de dados' },
+        { status: 500 }
+      );
+    }
+    console.log('[OK] Service client connected to Supabase');
 
     // 1. Auth (use cookie-based client to read JWT)
     const {
@@ -381,11 +402,27 @@ export async function POST(request: NextRequest) {
 
         const creative = creativeRaw as CreativeId | null;
         if (createError) {
-          console.error("[creatives] insert failed (new-flow):", createError);
+          console.error("[creatives] insert failed (new-flow):", JSON.stringify({
+            message: createError.message,
+            code: createError.code,
+            details: createError.details,
+            hint: createError.hint,
+          }));
         }
         if (!createError && creative) creativeIds.push(creative.id);
         imageUrls.push(imageUrl);
       }
+
+      // If NO creatives were saved, return error
+      if (creativeIds.length === 0) {
+        console.error('[creatives] ALL inserts failed in new-flow. No creatives saved.');
+        return NextResponse.json(
+          { error: 'Falha ao salvar criativos no banco de dados. Nenhum criativo foi persistido.' },
+          { status: 500 }
+        );
+      }
+
+      console.log(`[creatives] Saved ${creativeIds.length} creatives:`, creativeIds);
 
       return NextResponse.json({
         success: true,
@@ -575,11 +612,27 @@ export async function POST(request: NextRequest) {
 
       const creative = creativeRaw as CreativeId | null;
       if (createError) {
-        console.error("[creatives] insert failed (legacy-flow):", createError);
+        console.error("[creatives] insert failed (legacy-flow):", JSON.stringify({
+          message: createError.message,
+          code: createError.code,
+          details: createError.details,
+          hint: createError.hint,
+        }));
       }
       if (!createError && creative) creativeIds.push(creative.id);
       imageUrls.push(imageUrl);
     }
+
+    // If NO creatives were saved, return error
+    if (creativeIds.length === 0) {
+      console.error('[creatives] ALL inserts failed in legacy-flow. No creatives saved.');
+      return NextResponse.json(
+        { error: 'Falha ao salvar criativos no banco de dados. Nenhum criativo foi persistido.' },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[creatives] Saved ${creativeIds.length} creatives:`, creativeIds);
 
     return NextResponse.json({
       success: true,
@@ -704,14 +757,16 @@ async function uploadToStorage(
       .upload(path, buffer, { contentType: "image/png", upsert: true });
 
     if (error) {
-      console.error("Storage upload error:", error);
-      return `data:image/png;base64,${base64Data}`;
+      console.error("Storage upload error:", JSON.stringify({ message: error.message, name: error.name }));
+      return null;
     }
 
     const { data: urlData } = supabase.storage.from("creatives").getPublicUrl(path);
-    return urlData?.publicUrl ?? `data:image/png;base64,${base64Data}`;
+    const publicUrl = urlData?.publicUrl ?? null;
+    console.log('[storage] uploaded:', path, '→', publicUrl ? 'OK' : 'no URL');
+    return publicUrl;
   } catch (err) {
     console.error("Upload error:", err);
-    return `data:image/png;base64,${base64Data}`;
+    return null;
   }
 }
