@@ -1,5 +1,5 @@
 const fs = require('fs');
-const API_KEY = 'AIzaSyDMYml4AfwGv7RBonsdTbi1nrPqS9cw5nc';
+const API_KEY = process.env.GEMINI_API_KEY || 'YOUR_KEY_HERE';
 const MODEL = 'gemini-3-pro-image-preview';
 
 async function run() {
