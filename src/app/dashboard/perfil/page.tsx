@@ -36,6 +36,11 @@ export default function PerfilPage() {
   const [targetAudience, setTargetAudience] = useState("");
   const [preferredStyle, setPreferredStyle] = useState("");
 
+  // Brand colors
+  const [brandColorPrimary, setBrandColorPrimary] = useState("#6366f1");
+  const [brandColorSecondary, setBrandColorSecondary] = useState("#8b5cf6");
+  const [brandColorAccent, setBrandColorAccent] = useState("#f59e0b");
+
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -66,6 +71,11 @@ export default function PerfilPage() {
         setBrandPersonality(data.brand_personality ?? "");
         setTargetAudience(data.target_audience ?? "");
         setPreferredStyle(data.preferred_style ?? "");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const colors = (data as any).brand_colors as { primary?: string; secondary?: string; accent?: string } | null;
+        if (colors?.primary) setBrandColorPrimary(colors.primary);
+        if (colors?.secondary) setBrandColorSecondary(colors.secondary);
+        if (colors?.accent) setBrandColorAccent(colors.accent);
       }
 
       setLoading(false);
@@ -90,6 +100,11 @@ export default function PerfilPage() {
         brand_personality: brandPersonality || null,
         target_audience: targetAudience || null,
         preferred_style: preferredStyle || null,
+        brand_colors: {
+          primary: brandColorPrimary,
+          secondary: brandColorSecondary,
+          accent: brandColorAccent,
+        },
       })
       .eq("id", user.id);
 
@@ -311,6 +326,37 @@ export default function PerfilPage() {
             className="hidden"
             onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])}
           />
+        </div>
+
+        {/* Brand Colors */}
+        <div>
+          <p className="text-sm font-medium text-white/70 mb-3">Cores da marca</p>
+          <p className="text-white/40 text-xs mb-4">As cores serão incluídas automaticamente nos criativos gerados pela IA</p>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: "Primária", value: brandColorPrimary, onChange: setBrandColorPrimary },
+              { label: "Secundária", value: brandColorSecondary, onChange: setBrandColorSecondary },
+              { label: "Accent", value: brandColorAccent, onChange: setBrandColorAccent },
+            ].map(({ label, value, onChange }) => (
+              <div key={label} className="flex flex-col items-center gap-2">
+                <div className="relative">
+                  <div
+                    className="w-14 h-14 rounded-xl border-2 border-white/10 cursor-pointer overflow-hidden"
+                    style={{ backgroundColor: value }}
+                  >
+                    <input
+                      type="color"
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <span className="text-white/60 text-xs font-medium">{label}</span>
+                <span className="text-white/30 text-[10px] font-mono">{value}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>

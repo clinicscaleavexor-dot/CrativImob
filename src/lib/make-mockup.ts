@@ -19,6 +19,29 @@ export async function generateMockup(
   if (!photoRes.ok) throw new Error(`Falha ao buscar foto: ${photoRes.status}`);
   const photoBuffer = Buffer.from(await photoRes.arrayBuffer());
 
+  return composeMockup(photoBuffer, logoUrl, roomLabel, format, width, height);
+}
+
+export async function generateMockupFromBase64(
+  photoBase64: string,
+  logoUrl: string | null,
+  roomLabel: string | null,
+  format: string
+): Promise<string> {
+  const { width, height } = FORMAT_SIZES[format] ?? FORMAT_SIZES["1080x1080"];
+  const photoBuffer = Buffer.from(photoBase64, "base64");
+  return composeMockup(photoBuffer, logoUrl, roomLabel, format, width, height);
+}
+
+async function composeMockup(
+  photoBuffer: Buffer,
+  logoUrl: string | null,
+  roomLabel: string | null,
+  format: string,
+  width: number,
+  height: number
+): Promise<string> {
+
   // 2. Resize/crop background to fill output size
   const bgBuffer = await sharp(photoBuffer)
     .resize(width, height, { fit: "cover", position: "center" })

@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ChevronLeft,
@@ -9,16 +9,11 @@ import {
   Wand2,
   Loader2,
   CheckCircle2,
-  Building2,
   LayoutGrid,
   Pencil,
   Eye,
   Download,
   Share2,
-  BedDouble,
-  Bath,
-  Maximize2,
-  MapPin,
   Sparkles,
   Copy,
   Check,
@@ -26,11 +21,19 @@ import {
   ImageIcon,
   X,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { formatCurrency } from "@/lib/utils";
-import type { Tables } from "@/types/database";
 
-type Property = Tables<"properties">;
+interface UploadedImage {
+  base64: string;
+  mimeType: string;
+  preview: string;
+}
+
+interface StyleOption {
+  id: string;
+  slug: string;
+  label: string;
+  description: string | null;
+}
 
 interface GenerateCreativeResponse {
   success?: boolean;
@@ -42,60 +45,110 @@ interface GenerateCreativeResponse {
 }
 
 const FORMATS = [
-  {
-    id: "1080x1080",
-    label: "Post",
-    sublabel: "1080 x 1080",
-    icon: "squares",
-    ratio: "aspect-square",
-  },
-  {
-    id: "1080x1920",
-    label: "Stories",
-    sublabel: "1080 x 1920",
-    icon: "mobile",
-    ratio: "aspect-[9/16]",
-  },
-  {
-    id: "1200x628",
-    label: "Trafego",
-    sublabel: "1200 x 628",
-    icon: "desktop",
-    ratio: "aspect-[1200/628]",
-  },
-];
-
-const CREATIVE_TYPES = [
-  { id: "post", label: "Feed" },
-  { id: "story", label: "Story" },
-  { id: "trafego_pago", label: "Trafego Pago" },
+  { id: "1080x1080", label: "Post", sublabel: "1080 × 1080" },
+  { id: "1080x1920", label: "Stories", sublabel: "1080 × 1920" },
+  { id: "1200x628", label: "Tráfego", sublabel: "1200 × 628" },
 ];
 
 const STEPS = [
-  { id: 1, label: "Imagem", icon: ImageIcon },
-  { id: 2, label: "Formato", icon: LayoutGrid },
-  { id: 3, label: "Prompt", icon: Sparkles },
+  { id: 1, label: "Imagens", icon: ImageIcon },
+  { id: 2, label: "Estilo", icon: Sparkles },
+  { id: 3, label: "Informações", icon: Pencil },
   { id: 4, label: "Resultado", icon: Eye },
 ];
 
-function CriarPageContent() {
-  const searchParams = useSearchParams();
+const PRIMARY_SLOTS = 3;
+const SECONDARY_SLOTS = 4;
+
+function ImageSlot({
+  image,
+  label,
+  onUpload,
+  onRemove,
+}: {
+  image: UploadedImage | null;
+  label: string;
+  onUpload: (img: UploadedImage) => void;
+  onRemove: () => void;
+}) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Imagem muito grande. Máximo 10MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      onUpload({ base64, mimeType: file.type, preview: result });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  if (image) {
+    return (
+      <div className="relative group">
+        <img
+          src={image.preview}
+          alt={label}
+          className="w-full aspect-square rounded-xl border border-white/10 object-cover"
+        />
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-xl transition-all flex items-center justify-center">
+          <button
+            onClick={onRemove}
+            className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <span className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded-md font-medium">
+          {label}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <label className="relative group cursor-pointer">
+      <div className="w-full aspect-square rounded-xl border-2 border-dashed border-white/15 hover:border-brand-500/40 hover:bg-white/[0.03] transition-all flex flex-col items-center justify-center gap-1.5">
+        <Upload className="w-5 h-5 text-white/25 group-hover:text-brand-400 transition-colors" />
+        <span className="text-white/30 text-[10px] font-medium text-center px-1">{label}</span>
+      </div>
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+    </label>
+  );
+}
+
+export default function CriarPage() {
   const router = useRouter();
-  const preselectedPropertyId = searchParams.get("property");
-
   const [step, setStep] = useState(1);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
 
-  // Selections
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  // Step 1: Images
+  const [primaryImages, setPrimaryImages] = useState<(UploadedImage | null)[]>([null, null, null]);
+  const [secondaryImages, setSecondaryImages] = useState<(UploadedImage | null)[]>([
+    null,
+    null,
+    null,
+    null,
+  ]);
+
+  // Step 2: Style, Format, Model
+  const [styles, setStyles] = useState<StyleOption[]>([]);
+  const [loadingStyles, setLoadingStyles] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState("1080x1080");
-  const [selectedType, setSelectedType] = useState("post");
   const [selectedModel, setSelectedModel] = useState<"flash" | "pro">("flash");
-  const [uploadedImage, setUploadedImage] = useState<{ base64: string; mimeType: string; preview: string } | null>(null);
 
-  // Prompt and copy
-  const [userPrompt, setUserPrompt] = useState("");
+  // Step 3: Property info + copy
+  const [propertyInfo, setPropertyInfo] = useState("");
   const [headline, setHeadline] = useState("");
   const [copyText, setCopyText] = useState("");
   const [ctaText, setCtaText] = useState("Saiba mais");
@@ -108,70 +161,22 @@ function CriarPageContent() {
   const [genError, setGenError] = useState<string | null>(null);
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
 
-  const supabase = createClient();
-
-  const loadData = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Load properties
-    const propRes = await supabase
-      .from("properties")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .order("created_at", { ascending: false });
-
-    const props = (propRes.data ?? []) as Property[];
-    setProperties(props);
-
-    if (preselectedPropertyId) {
-      const found = props.find((p) => p.id === preselectedPropertyId);
-      if (found) {
-        setSelectedProperty(found);
-        setStep(2);
-      }
-    }
-
-    setLoadingData(false);
-  }, [supabase, preselectedPropertyId]);
-
+  // Load styles when entering step 2
   useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Auto-fill copy when property is selected
-  useEffect(() => {
-    if (selectedProperty && !headline) {
-      const typeLabel: Record<string, string> = {
-        casa: "Casa",
-        apartamento: "Apartamento",
-        lote: "Lote",
-        comercial: "Comercial",
-        cobertura: "Cobertura",
-        chacara: "Chacara",
-      };
-      const label = typeLabel[selectedProperty.type] ?? "Imovel";
-      const price = formatCurrency(selectedProperty.price_cents);
-      setHeadline(`${label} a venda - ${price}`);
-      const extras = [
-        selectedProperty.bedrooms
-          ? `${selectedProperty.bedrooms} quartos`
-          : "",
-        selectedProperty.area_sqm ? `${selectedProperty.area_sqm}m2` : "",
-        selectedProperty.city ?? "",
-      ]
-        .filter(Boolean)
-        .join(" - ");
-      if (extras) setCopyText(extras);
+    if (step === 2 && styles.length === 0 && !loadingStyles) {
+      setLoadingStyles(true);
+      fetch("/api/styles")
+        .then((r) => r.json())
+        .then((d) => setStyles(d.styles ?? []))
+        .catch(() => {})
+        .finally(() => setLoadingStyles(false));
     }
-  }, [selectedProperty, headline]);
+  }, [step, styles.length, loadingStyles]);
 
   async function handleGenerate() {
-    if (!userPrompt.trim()) return;
-    if (!selectedProperty && !uploadedImage) return;
+    const filledPrimary = primaryImages.filter((img): img is UploadedImage => img !== null);
+    if (filledPrimary.length === 0) return;
+
     setGenerating(true);
     setGenError(null);
     setGeneratedUrls([]);
@@ -180,22 +185,23 @@ function CriarPageContent() {
     setStep(4);
 
     try {
-      const payload: Record<string, unknown> = {
-        prompt: userPrompt,
+      const payload = {
+        style_category_id: selectedStyle,
+        property_info: propertyInfo,
+        primary_images: filledPrimary.map((img) => ({
+          base64: img.base64,
+          mime_type: img.mimeType,
+        })),
+        secondary_images: secondaryImages
+          .filter((img): img is UploadedImage => img !== null)
+          .map((img) => ({ base64: img.base64, mime_type: img.mimeType })),
         format: selectedFormat,
-        creative_type: selectedType,
+        model: selectedModel,
+        creative_type: "post",
         headline,
         copy_text: copyText,
         cta_text: ctaText,
-        model: selectedModel,
       };
-      if (selectedProperty) {
-        payload.property_id = selectedProperty.id;
-      }
-      if (uploadedImage) {
-        payload.image_base64 = uploadedImage.base64;
-        payload.image_mime_type = uploadedImage.mimeType;
-      }
 
       const res = await fetch("/api/generate-creative", {
         method: "POST",
@@ -205,59 +211,33 @@ function CriarPageContent() {
 
       const rawResponse = await res.text();
       let data: GenerateCreativeResponse | null = null;
-
       try {
         data = rawResponse ? (JSON.parse(rawResponse) as GenerateCreativeResponse) : null;
       } catch {
         data = null;
       }
 
-      const fallbackError = !data
-        ? extractPlainErrorMessage(rawResponse, res.status)
-        : null;
-
       if (data?.creative_ids?.length) setGeneratedIds(data.creative_ids);
       if (data?.image_urls?.length) setGeneratedUrls(data.image_urls);
       if (data?.generated_copy) setGeneratedCopy(data.generated_copy);
 
       if (!res.ok) {
-        setGenError(data?.error ?? fallbackError ?? "Erro ao gerar criativo");
+        setGenError(data?.error ?? `Erro HTTP ${res.status}`);
         return;
       }
 
-      if (!data) {
-        setGenError(fallbackError ?? "Resposta invalida do servidor");
-        return;
-      }
-
-      setGeneratedIds(data.creative_ids ?? []);
-      setGeneratedUrls(data.image_urls ?? []);
-      setGeneratedCopy(data.generated_copy ?? null);
+      setGeneratedIds(data?.creative_ids ?? []);
+      setGeneratedUrls(data?.image_urls ?? []);
+      setGeneratedCopy(data?.generated_copy ?? null);
     } catch (err) {
       setGenError(
-        err instanceof Error && err.message
-          ? `Falha na conexao com o servidor: ${err.message}`
-          : "Falha na conexao com o servidor. Tente novamente."
+        err instanceof Error
+          ? `Falha na conexão: ${err.message}`
+          : "Falha na conexão. Tente novamente."
       );
     } finally {
       setGenerating(false);
     }
-  }
-
-  function extractPlainErrorMessage(rawResponse: string, status: number) {
-    const plainText = rawResponse
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (!plainText) {
-      return `Erro HTTP ${status} ao gerar criativo.`;
-    }
-
-    const shortened = plainText.slice(0, 220);
-    return `Erro HTTP ${status}: ${shortened}`;
   }
 
   async function handleCopyToClipboard() {
@@ -267,19 +247,93 @@ function CriarPageContent() {
       setCopiedToClipboard(true);
       setTimeout(() => setCopiedToClipboard(false), 2000);
     } catch {
-      // fallback
+      // clipboard not available
     }
   }
 
-  const canNext =
-    (step === 1 && (selectedProperty !== null || uploadedImage !== null)) ||
-    (step === 2 && true) ||
-    (step === 3 && userPrompt.trim().length > 0);
+  async function downloadAll() {
+    const validUrls = generatedUrls.filter((u): u is string => !!u);
+    for (let i = 0; i < validUrls.length; i++) {
+      const a = document.createElement("a");
+      a.href = validUrls[i];
+      a.download = `criativo-${i + 1}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
 
-  if (loadingData) {
+  function resetWizard() {
+    setStep(1);
+    setPrimaryImages([null, null, null]);
+    setSecondaryImages([null, null, null, null]);
+    setSelectedStyle(null);
+    setPropertyInfo("");
+    setHeadline("");
+    setCopyText("");
+    setCtaText("Saiba mais");
+    setGeneratedUrls([]);
+    setGeneratedCopy(null);
+    setGeneratedIds([]);
+    setGenError(null);
+  }
+
+  const hasPrimary = primaryImages.some((img) => img !== null);
+  const canNext =
+    (step === 1 && hasPrimary) ||
+    step === 2 ||
+    (step === 3 && propertyInfo.trim().length > 0);
+
+  function renderImageGrid(urls: (string | null)[], ids: string[]) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-6 h-6 text-brand-400 animate-spin" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {urls.map((url, idx) =>
+          url ? (
+            <div key={idx} className="space-y-3">
+              <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-lg font-medium z-10">
+                  {idx === 0 ? "IA" : `Mockup ${idx}`}
+                </div>
+                <Image
+                  src={url}
+                  alt={`Criativo ${idx + 1}`}
+                  width={540}
+                  height={540}
+                  className="w-full object-contain max-h-[400px]"
+                  unoptimized={url.startsWith("data:")}
+                />
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={url}
+                  download={`criativo-${idx + 1}-${ids[idx] ?? "img"}.png`}
+                  className="flex-1 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-xl font-semibold text-xs transition-all"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Baixar
+                </a>
+                <button
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: `Criativo ${idx + 1}`, url });
+                    }
+                  }}
+                  className="flex items-center gap-2 bg-white/8 hover:bg-white/15 text-white px-4 py-2.5 rounded-xl text-xs transition-all"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              key={idx}
+              className="rounded-xl border border-white/8 bg-white/3 p-8 flex items-center justify-center"
+            >
+              <p className="text-white/40 text-sm">Imagem {idx + 1} — falhou</p>
+            </div>
+          )
+        )}
       </div>
     );
   }
@@ -296,9 +350,7 @@ function CriarPageContent() {
         </button>
         <div>
           <h1 className="text-2xl font-black text-white">Criar Criativo</h1>
-          <p className="text-white/60 text-sm">
-            Gere imagens profissionais com IA
-          </p>
+          <p className="text-white/60 text-sm">Gere imagens profissionais com IA</p>
         </div>
       </div>
 
@@ -340,146 +392,116 @@ function CriarPageContent() {
       {/* Step content */}
       <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-6">
 
-        {/* Step 1: Image Source */}
+        {/* ── Step 1: Imagens ── */}
         {step === 1 && (
           <div className="space-y-6">
-            <h2 className="text-lg font-bold text-white mb-2">
-              Escolha a imagem
-            </h2>
-            <p className="text-white/50 text-sm">
-              Envie uma foto do imovel ou selecione um imovel cadastrado.
-            </p>
-
-            {/* Direct Upload */}
             <div>
-              <p className="text-sm text-white/60 font-medium mb-3">Upload direto</p>
-              {uploadedImage ? (
-                <div className="relative inline-block">
-                  <img
-                    src={uploadedImage.preview}
-                    alt="Upload"
-                    className="h-40 rounded-xl border border-white/10 object-cover"
-                  />
-                  <button
-                    onClick={() => setUploadedImage(null)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-all"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-white/15 hover:border-brand-500/40 rounded-xl p-8 cursor-pointer transition-all hover:bg-white/3">
-                  <Upload className="w-8 h-8 text-white/30" />
-                  <span className="text-white/50 text-sm">Clique ou arraste uma imagem</span>
-                  <span className="text-white/30 text-xs">JPG, PNG ou WebP ate 10MB</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.size > 10 * 1024 * 1024) {
-                        alert("Imagem muito grande. Maximo 10MB.");
-                        return;
-                      }
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const result = reader.result as string;
-                        const base64 = result.split(",")[1];
-                        setUploadedImage({
-                          base64,
-                          mimeType: file.type,
-                          preview: result,
-                        });
-                        setSelectedProperty(null);
-                      };
-                      reader.readAsDataURL(file);
+              <h2 className="text-lg font-bold text-white mb-1">Selecione as fotos</h2>
+              <p className="text-white/50 text-sm">
+                Fotos primárias são enviadas para a IA. Fotos secundárias viram mockups com sua logo.
+              </p>
+            </div>
+
+            {/* Primary photos */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-semibold text-brand-400 bg-brand-500/15 px-2.5 py-1 rounded-full uppercase tracking-wide">
+                  Fotos Primárias
+                </span>
+                <span className="text-white/30 text-xs">Até 3 · mínimo 1 · enviadas para a IA</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {Array.from({ length: PRIMARY_SLOTS }).map((_, i) => (
+                  <ImageSlot
+                    key={i}
+                    image={primaryImages[i]}
+                    label={i === 0 ? "Foto Principal" : `Foto ${i + 1}`}
+                    onUpload={(img) => {
+                      const next = [...primaryImages];
+                      next[i] = img;
+                      setPrimaryImages(next);
+                    }}
+                    onRemove={() => {
+                      const next = [...primaryImages];
+                      next[i] = null;
+                      setPrimaryImages(next);
                     }}
                   />
-                </label>
-              )}
+                ))}
+              </div>
             </div>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-white/30 text-xs font-medium">OU</span>
-              <div className="flex-1 h-px bg-white/10" />
-            </div>
-
-            {/* Select from properties */}
+            {/* Secondary photos */}
             <div>
-              <p className="text-sm text-white/60 font-medium mb-3">Selecionar imovel cadastrado</p>
-              {properties.length === 0 ? (
-                <div className="text-center py-6">
-                  <Building2 className="w-8 h-8 text-white/15 mx-auto mb-2" />
-                  <p className="text-white/50 text-sm">Nenhum imovel cadastrado</p>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-semibold text-white/50 bg-white/8 px-2.5 py-1 rounded-full uppercase tracking-wide">
+                  Fotos Secundárias
+                </span>
+                <span className="text-white/30 text-xs">Até 4 · opcionais · mockup com sua logo</span>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {Array.from({ length: SECONDARY_SLOTS }).map((_, i) => (
+                  <ImageSlot
+                    key={i}
+                    image={secondaryImages[i]}
+                    label={`Foto ${PRIMARY_SLOTS + i + 1}`}
+                    onUpload={(img) => {
+                      const next = [...secondaryImages];
+                      next[i] = img;
+                      setSecondaryImages(next);
+                    }}
+                    onRemove={() => {
+                      const next = [...secondaryImages];
+                      next[i] = null;
+                      setSecondaryImages(next);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 2: Estilo, Formato, Modelo ── */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-bold text-white">Estilo e Formato</h2>
+
+            {/* Style cards */}
+            <div>
+              <p className="text-sm text-white/60 font-medium mb-3">
+                Estilo do criativo{" "}
+                <span className="text-white/30 font-normal">(opcional)</span>
+              </p>
+              {loadingStyles ? (
+                <div className="flex items-center gap-2 text-white/40 text-sm py-4">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Carregando estilos...
                 </div>
+              ) : styles.length === 0 ? (
+                <p className="text-white/30 text-sm py-2">Nenhum estilo configurado ainda.</p>
               ) : (
-                <div className="grid gap-3 max-h-[300px] overflow-y-auto pr-1">
-                  {properties.map((p) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {styles.map((s) => (
                     <button
-                      key={p.id}
-                      onClick={() => {
-                        setSelectedProperty(p);
-                        setUploadedImage(null);
-                      }}
-                      className={`w-full text-left p-4 rounded-xl border transition-all ${
-                        selectedProperty?.id === p.id
-                          ? "border-brand-500/60 bg-brand-500/10"
+                      key={s.id}
+                      onClick={() => setSelectedStyle(selectedStyle === s.id ? null : s.id)}
+                      className={`text-left p-4 rounded-xl border transition-all ${
+                        selectedStyle === s.id
+                          ? "border-brand-500/60 bg-brand-500/10 ring-1 ring-brand-500/30"
                           : "border-white/8 bg-white/3 hover:border-white/20 hover:bg-white/5"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs text-brand-400 bg-brand-500/15 px-2 py-0.5 rounded-full capitalize">
-                              {p.type}
-                            </span>
-                          </div>
-                          <p className="text-white font-semibold">{p.title}</p>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-white/60 text-xs">
-                            {p.city && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" /> {p.city}
-                              </span>
-                            )}
-                            {p.bedrooms != null && p.bedrooms > 0 && (
-                              <span className="flex items-center gap-1">
-                                <BedDouble className="w-3 h-3" /> {p.bedrooms}
-                              </span>
-                            )}
-                            {p.bathrooms != null && p.bathrooms > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Bath className="w-3 h-3" /> {p.bathrooms}
-                              </span>
-                            )}
-                            {p.area_sqm && (
-                              <span className="flex items-center gap-1">
-                                <Maximize2 className="w-3 h-3" /> {p.area_sqm}m2
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-white font-bold text-lg whitespace-nowrap">
-                          {formatCurrency(p.price_cents)}
-                        </p>
-                      </div>
+                      <p className="text-white font-semibold text-sm">{s.label}</p>
+                      {s.description && (
+                        <p className="text-white/50 text-xs mt-1 line-clamp-2">{s.description}</p>
+                      )}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-        {/* Step 2: Format + Model + Type */}
-        {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-bold text-white">Formato e Tipo</h2>
-
-            {/* Formato */}
+            {/* Format */}
             <div>
               <p className="text-sm text-white/60 font-medium mb-3">Formato</p>
               <div className="grid grid-cols-3 gap-3">
@@ -495,9 +517,7 @@ function CriarPageContent() {
                   >
                     <LayoutGrid className="w-6 h-6 text-white/60" />
                     <div className="text-center">
-                      <p className="text-white font-semibold text-sm">
-                        {f.label}
-                      </p>
+                      <p className="text-white font-semibold text-sm">{f.label}</p>
                       <p className="text-white/60 text-xs">{f.sublabel}</p>
                     </div>
                   </button>
@@ -505,13 +525,13 @@ function CriarPageContent() {
               </div>
             </div>
 
-            {/* Modelo IA */}
+            {/* Model */}
             <div>
               <p className="text-sm text-white/60 font-medium mb-3">Modelo de IA</p>
               <div className="flex gap-2">
                 {[
-                  { id: "flash" as const, label: "Flash", desc: "Rapido e economico" },
-                  { id: "pro" as const, label: "Pro", desc: "Maior qualidade" },
+                  { id: "flash" as const, label: "Flash ⚡", desc: "Rápido e econômico" },
+                  { id: "pro" as const, label: "Pro 💎", desc: "Maior qualidade" },
                 ].map((m) => (
                   <button
                     key={m.id}
@@ -528,121 +548,84 @@ function CriarPageContent() {
                 ))}
               </div>
             </div>
-
-            {/* Tipo */}
-            <div>
-              <p className="text-sm text-white/60 font-medium mb-3">
-                Tipo de criativo
-              </p>
-              <div className="flex gap-2">
-                {CREATIVE_TYPES.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedType(t.id)}
-                    className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                      selectedType === t.id
-                        ? "border-brand-500/60 bg-brand-500/10 text-brand-400"
-                        : "border-white/8 text-white/70 hover:border-white/20 hover:text-white"
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
-        {/* Step 3: Prompt + Copy */}
+        {/* ── Step 3: Informações do Imóvel ── */}
         {step === 3 && (
           <div className="space-y-5">
             <div>
-              <h2 className="text-lg font-bold text-white mb-1">
-                Escreva o prompt da imagem
-              </h2>
+              <h2 className="text-lg font-bold text-white mb-1">Informações do Imóvel</h2>
               <p className="text-white/50 text-sm">
-                Descreva o que voce quer que a IA gere. Seja especifico sobre estilo, cores, composicao e texto a exibir.
+                Descreva o imóvel para personalizar o criativo gerado pela IA.
               </p>
             </div>
 
-            {/* Prompt textarea */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-2">
-                Prompt <span className="text-red-400">*</span>
+                Informações do Imóvel <span className="text-red-400">*</span>
               </label>
               <textarea
-                value={userPrompt}
-                onChange={(e) => setUserPrompt(e.target.value)}
-                rows={6}
-                maxLength={2000}
-                placeholder="Ex: Crie um post para Instagram de um apartamento de luxo em Sao Paulo. Estilo moderno e sofisticado, tons escuros com dourado. Inclua headline 'Apartamento Exclusivo' em destaque, preco R$ 1.2M abaixo. A foto do imovel deve ser o hero. Logo da imobiliaria no canto inferior direito."
+                value={propertyInfo}
+                onChange={(e) => setPropertyInfo(e.target.value)}
+                rows={5}
+                maxLength={1500}
+                placeholder="Ex: Apartamento de 3 quartos, 90m², Jardim Paulista, São Paulo. Valor R$ 850.000. Andar alto com vista livre, varanda gourmet, 2 vagas. Acabamento de alto padrão, pronto para morar."
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm focus:outline-none focus:border-brand-500/60 transition-all resize-none"
               />
-              <p className="text-white/40 text-xs mt-1 text-right">
-                {userPrompt.length}/2000
-              </p>
+              <p className="text-white/40 text-xs mt-1 text-right">{propertyInfo.length}/1500</p>
             </div>
 
-            {/* Headline / Copy / CTA */}
+            {/* Optional copy metadata */}
             <div className="border-t border-white/8 pt-5 space-y-4">
               <p className="text-xs text-white/40 uppercase tracking-wide font-medium">
                 Metadados do criativo (opcional)
               </p>
 
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">
-                  Headline
-                </label>
+                <label className="block text-sm font-medium text-white/70 mb-2">Headline</label>
                 <input
                   type="text"
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
                   maxLength={80}
-                  placeholder="Ex: Apartamento 2 quartos em Sao Paulo - R$ 350.000"
+                  placeholder="Ex: Apartamento 3 quartos em São Paulo"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all"
                 />
-                <p className="text-white/40 text-xs mt-1 text-right">
-                  {headline.length}/80
-                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">
-                  Descricao
-                </label>
+                <label className="block text-sm font-medium text-white/70 mb-2">Descrição</label>
                 <textarea
                   value={copyText}
                   onChange={(e) => setCopyText(e.target.value)}
                   maxLength={200}
                   rows={2}
-                  placeholder="Ex: 3 quartos - 80m2 - Jardim Paulista - Documentacao ok"
+                  placeholder="Ex: 3 quartos · 90m² · Jardim Paulista"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 text-sm focus:outline-none focus:border-brand-500/60 transition-all resize-none"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-2">
-                  Chamada para acao (CTA)
+                  Chamada para ação (CTA)
                 </label>
                 <div className="flex gap-2 flex-wrap mb-2">
-                  {[
-                    "Saiba mais",
-                    "Entre em contato",
-                    "Agende uma visita",
-                    "Investir agora",
-                  ].map((cta) => (
-                    <button
-                      key={cta}
-                      onClick={() => setCtaText(cta)}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                        ctaText === cta
-                          ? "bg-brand-500/20 border-brand-500/50 text-brand-400"
-                          : "bg-white/5 border-white/10 text-white/70 hover:border-white/25"
-                      }`}
-                    >
-                      {cta}
-                    </button>
-                  ))}
+                  {["Saiba mais", "Entre em contato", "Agende uma visita", "Investir agora"].map(
+                    (cta) => (
+                      <button
+                        key={cta}
+                        onClick={() => setCtaText(cta)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                          ctaText === cta
+                            ? "bg-brand-500/20 border-brand-500/50 text-brand-400"
+                            : "bg-white/5 border-white/10 text-white/70 hover:border-white/25"
+                        }`}
+                      >
+                        {cta}
+                      </button>
+                    )
+                  )}
                 </div>
                 <input
                   type="text"
@@ -655,36 +638,49 @@ function CriarPageContent() {
             </div>
 
             {/* Summary */}
-            {(selectedProperty || uploadedImage) && (
-              <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm">
-                <p className="text-white/60 text-xs font-medium mb-2 uppercase tracking-wide">
-                  Resumo
-                </p>
-                <div className="space-y-1">
+            <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm">
+              <p className="text-white/60 text-xs font-medium mb-2 uppercase tracking-wide">
+                Resumo
+              </p>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-white/70">Fotos primárias</span>
+                  <span className="text-white">
+                    {primaryImages.filter(Boolean).length} foto
+                    {primaryImages.filter(Boolean).length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                {secondaryImages.some(Boolean) && (
                   <div className="flex justify-between">
-                    <span className="text-white/70">Imagem</span>
-                    <span className="text-white truncate max-w-[60%] text-right">
-                      {selectedProperty ? selectedProperty.title : "Upload direto"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/70">Formato</span>
+                    <span className="text-white/70">Fotos secundárias</span>
                     <span className="text-white">
-                      {FORMATS.find((f) => f.id === selectedFormat)?.label} -{" "}
-                      {selectedFormat}
+                      {secondaryImages.filter(Boolean).length} mockup
+                      {secondaryImages.filter(Boolean).length !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/70">Modelo</span>
-                    <span className="text-white capitalize">{selectedModel}</span>
-                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-white/70">Estilo</span>
+                  <span className="text-white">
+                    {styles.find((s) => s.id === selectedStyle)?.label ?? "Sem estilo"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/70">Formato</span>
+                  <span className="text-white">
+                    {FORMATS.find((f) => f.id === selectedFormat)?.label} · {selectedFormat}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/70">Modelo</span>
+                  <span className="text-white capitalize">{selectedModel}</span>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Step 4: Result */}
+        {/* ── Step 4: Resultado ── */}
         {step === 4 && (
           <div className="space-y-6">
             <h2 className="text-lg font-bold text-white">
@@ -703,20 +699,14 @@ function CriarPageContent() {
                   <Wand2 className="absolute inset-0 m-auto w-6 h-6 text-brand-400" />
                 </div>
                 <div className="text-center">
-                  <p className="text-white font-semibold">
-                    Processando com IA...
-                  </p>
-                  <p className="text-white/60 text-sm mt-1">
-                    Gerando imagem IA + mockups - pode levar ate 60 segundos
-                  </p>
+                  <p className="text-white font-semibold">Processando com IA...</p>
+                  <p className="text-white/60 text-sm mt-1">Pode levar até 60 segundos</p>
                 </div>
               </div>
             ) : genError ? (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 text-center">
-                  <p className="text-red-400 font-medium mb-1">
-                    Erro na geracao da imagem IA
-                  </p>
+                  <p className="text-red-400 font-medium mb-1">Erro na geração</p>
                   <p className="text-red-400/70 text-sm">{genError}</p>
                   <button
                     onClick={() => {
@@ -728,154 +718,36 @@ function CriarPageContent() {
                     Tentar novamente
                   </button>
                 </div>
-
-                {/* Still show mockups even when AI failed */}
-                {generatedUrls.some((u) => u) && (
-                  <div>
-                    <p className="text-white/70 text-sm mb-3 font-medium">
-                      {generatedUrls.filter((u) => u).length} Mockup{generatedUrls.filter((u) => u).length !== 1 ? "s" : ""} Gerado{generatedUrls.filter((u) => u).length !== 1 ? "s" : ""}
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {generatedUrls.map((url, idx) =>
-                        url ? (
-                          <div key={idx} className="space-y-3">
-                            <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                              <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-lg font-medium z-10">
-                                Mockup {idx + 1}
-                              </div>
-                              <Image
-                                src={url}
-                                alt={`Mockup ${idx + 1}`}
-                                width={540}
-                                height={540}
-                                className="w-full object-contain max-h-[400px]"
-                                unoptimized={url.startsWith("data:")}
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <a
-                                href={url}
-                                download={`mockup-${idx + 1}.png`}
-                                className="flex-1 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-xl font-semibold text-xs transition-all"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                Baixar
-                              </a>
-                            </div>
-                          </div>
-                        ) : null
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Generated Copy */}
-                {generatedCopy && (
-                  <div className="bg-white/[0.04] border border-white/10 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-white/70 text-sm font-medium flex items-center gap-2">
-                        <Pencil className="w-3.5 h-3.5" />
-                        Copy para Postagem
-                      </p>
-                      <button
-                        onClick={handleCopyToClipboard}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          copiedToClipboard
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-white/8 hover:bg-white/15 text-white/60 hover:text-white"
-                        }`}
-                      >
-                        {copiedToClipboard ? (
-                          <>
-                            <Check className="w-3 h-3" /> Copiado!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" /> Copiar
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <pre className="text-white/80 text-sm whitespace-pre-wrap font-sans leading-relaxed">
-                      {generatedCopy}
-                    </pre>
-                  </div>
-                )}
+                {generatedUrls.some((u) => u) && renderImageGrid(generatedUrls, generatedIds)}
               </div>
             ) : (
               <>
-                {/* Image Variations */}
                 {generatedUrls.some((u) => u) && (
-                  <div>
-                    <p className="text-white/70 text-sm mb-3 font-medium">
-                      {generatedUrls.filter((u) => u).length} Criativo{generatedUrls.filter((u) => u).length !== 1 ? "s" : ""} Gerado{generatedUrls.filter((u) => u).length !== 1 ? "s" : ""}
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {generatedUrls.map((url, idx) =>
-                        url ? (
-                          <div
-                            key={idx}
-                            className="space-y-3"
-                          >
-                            <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                              <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-lg font-medium z-10">
-                                Variacao {idx + 1}
-                              </div>
-                              <Image
-                                src={url}
-                                alt={`Criativo variacao ${idx + 1}`}
-                                width={540}
-                                height={540}
-                                className="w-full object-contain max-h-[400px]"
-                                unoptimized={url.startsWith("data:")}
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <a
-                                href={url}
-                                download={`criativo-v${idx + 1}-${generatedIds[idx] ?? "img"}.png`}
-                                className="flex-1 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white py-2.5 rounded-xl font-semibold text-xs transition-all"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                Baixar V{idx + 1}
-                              </a>
-                              <button
-                                onClick={() => {
-                                  if (navigator.share) {
-                                    navigator.share({
-                                      title: `Criativo V${idx + 1}`,
-                                      url,
-                                    });
-                                  }
-                                }}
-                                className="flex items-center gap-2 bg-white/8 hover:bg-white/15 text-white px-4 py-2.5 rounded-xl text-xs transition-all"
-                              >
-                                <Share2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            key={idx}
-                            className="rounded-xl border border-white/8 bg-white/3 p-8 flex flex-col items-center justify-center text-center"
-                          >
-                            <p className="text-white/50 text-sm">
-                              Variacao {idx + 1} - falhou
-                            </p>
-                          </div>
-                        )
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-white/70 text-sm font-medium">
+                        {generatedUrls.filter((u) => u).length} criativo
+                        {generatedUrls.filter((u) => u).length !== 1 ? "s" : ""} gerado
+                        {generatedUrls.filter((u) => u).length !== 1 ? "s" : ""}
+                      </p>
+                      {generatedUrls.filter((u) => u).length > 1 && (
+                        <button
+                          onClick={downloadAll}
+                          className="flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 border border-brand-500/30 hover:border-brand-400/50 px-3 py-1.5 rounded-lg transition-all"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Baixar Todas
+                        </button>
                       )}
                     </div>
+                    {renderImageGrid(generatedUrls, generatedIds)}
                   </div>
                 )}
 
-                {/* Generated Copy */}
                 {generatedCopy && (
                   <div className="bg-white/[0.04] border border-white/10 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-white/70 text-sm font-medium flex items-center gap-2">
-                        <Pencil className="w-3.5 h-3.5" />
-                        Copy para Postagem
+                        <Pencil className="w-3.5 h-3.5" /> Copy para Postagem
                       </p>
                       <button
                         onClick={handleCopyToClipboard}
@@ -902,22 +774,17 @@ function CriarPageContent() {
                   </div>
                 )}
 
-                {/* No results at all */}
                 {!generatedUrls.some((u) => u) && !generatedCopy && (
                   <div className="bg-white/5 border border-white/8 rounded-xl p-8 text-center">
                     <div className="w-12 h-12 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto mb-3">
                       <Wand2 className="w-5 h-5 text-amber-400" />
                     </div>
-                    <p className="text-white font-semibold mb-1">
-                      Nao foi possivel gerar
-                    </p>
+                    <p className="text-white font-semibold mb-1">Não foi possível gerar</p>
                     <p className="text-white/60 text-sm mb-4">
-                      A IA nao retornou resultados. Tente novamente.
+                      A IA não retornou resultados. Tente novamente.
                     </p>
                     <button
-                      onClick={() => {
-                        setStep(3);
-                      }}
+                      onClick={() => setStep(3)}
                       className="text-brand-400 hover:text-brand-300 text-sm underline"
                     >
                       Voltar e tentar novamente
@@ -928,23 +795,9 @@ function CriarPageContent() {
             )}
 
             {!generating && (
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => {
-                    setStep(1);
-                    setSelectedProperty(null);
-                    setUploadedImage(null);
-                    setSelectedFormat("1080x1080");
-                    setSelectedType("post");
-                    setUserPrompt("");
-                    setHeadline("");
-                    setCopyText("");
-                    setCtaText("Saiba mais");
-                    setGeneratedUrls([]);
-                    setGeneratedCopy(null);
-                    setGeneratedIds([]);
-                    setGenError(null);
-                  }}
+                  onClick={resetWizard}
                   className="flex-1 py-2.5 text-sm text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
                 >
                   Criar outro
@@ -961,7 +814,7 @@ function CriarPageContent() {
         )}
       </div>
 
-      {/* Navigation */}
+      {/* Navigation buttons */}
       {step < 4 && (
         <div className="flex items-center justify-between">
           <button
@@ -969,8 +822,7 @@ function CriarPageContent() {
             disabled={step === 1}
             className="flex items-center gap-2 text-sm text-white/60 hover:text-white disabled:opacity-0 transition-all"
           >
-            <ChevronLeft className="w-4 h-4" />
-            Voltar
+            <ChevronLeft className="w-4 h-4" /> Voltar
           </button>
 
           {step < 3 ? (
@@ -979,8 +831,7 @@ function CriarPageContent() {
               disabled={!canNext}
               className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-all"
             >
-              Proximo
-              <ChevronRight className="w-4 h-4" />
+              Próximo <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
             <button
@@ -999,19 +850,5 @@ function CriarPageContent() {
         </div>
       )}
     </div>
-  );
-}
-
-export default function CriarPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-6 h-6 text-brand-400 animate-spin" />
-        </div>
-      }
-    >
-      <CriarPageContent />
-    </Suspense>
   );
 }
