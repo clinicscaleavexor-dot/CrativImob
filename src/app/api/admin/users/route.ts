@@ -111,3 +111,37 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ success: true, new_balance: newBalance });
 }
+
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.user_metadata?.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const user_id = searchParams.get("user_id");
+
+  if (!user_id) {
+    return NextResponse.json({ error: "user_id obrigatório" }, { status: 400 });
+  }
+
+  // Impede que o admin exclua a si mesmo
+  if (user_id === user.id) {
+    return NextResponse.json({ error: "Você não pode excluir sua própria conta." }, { status: 400 });
+  }
+
+  const serviceClient = createServiceClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (serviceClient as any).auth.admin.deleteUser(user_id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}

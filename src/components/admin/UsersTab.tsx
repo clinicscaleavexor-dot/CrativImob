@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Plus, Search, Users } from "lucide-react";
+import { Loader2, Plus, Search, Trash2, Users } from "lucide-react";
 
 interface UserRow {
   id: string;
@@ -19,6 +19,8 @@ export default function UsersTab() {
   const [addCreditsModal, setAddCreditsModal] = useState<UserRow | null>(null);
   const [creditsAmount, setCreditsAmount] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<UserRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
   const loadUsers = useCallback(async () => {
@@ -79,6 +81,29 @@ export default function UsersTab() {
       setTimeout(() => setFeedback(null), 3000);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeleteUser() {
+    if (!deleteModal) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/users?user_id=${deleteModal.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        setFeedback({ type: "ok", msg: `Usuário ${deleteModal.full_name ?? deleteModal.email} excluído com sucesso.` });
+        setUsers((prev) => prev.filter((u) => u.id !== deleteModal.id));
+        setDeleteModal(null);
+        setTimeout(() => setFeedback(null), 4000);
+      } else {
+        setFeedback({ type: "err", msg: data.error ?? "Erro ao excluir usuário" });
+        setTimeout(() => setFeedback(null), 4000);
+      }
+    } catch {
+      setFeedback({ type: "err", msg: "Erro de conexão" });
+      setTimeout(() => setFeedback(null), 4000);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -153,16 +178,25 @@ export default function UsersTab() {
                     {new Date(u.created_at).toLocaleDateString("pt-BR")}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => {
-                        setAddCreditsModal(u);
-                        setCreditsAmount("");
-                      }}
-                      className="inline-flex items-center gap-1 text-xs bg-yellow-400/10 hover:bg-yellow-400/20 text-yellow-400 px-3 py-1.5 rounded-lg font-medium transition-all"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Créditos
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => {
+                          setAddCreditsModal(u);
+                          setCreditsAmount("");
+                        }}
+                        className="inline-flex items-center gap-1 text-xs bg-yellow-400/10 hover:bg-yellow-400/20 text-yellow-400 px-3 py-1.5 rounded-lg font-medium transition-all"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Créditos
+                      </button>
+                      <button
+                        onClick={() => setDeleteModal(u)}
+                        className="inline-flex items-center gap-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg font-medium transition-all"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Excluir
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -177,6 +211,39 @@ export default function UsersTab() {
           </div>
         )}
       </div>
+
+      {/* Delete User Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#1a2236] border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <h3 className="text-white font-bold text-lg">Excluir Usuário</h3>
+            <p className="text-white/70 text-sm">
+              Tem certeza que deseja excluir o usuário{" "}
+              <span className="text-white font-semibold">{deleteModal.full_name ?? deleteModal.email}</span>?
+            </p>
+            <p className="text-red-400/80 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              Esta ação é irreversível. Todos os dados do usuário (créditos, criativos, perfil) serão removidos.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDeleteModal(null)}
+                disabled={deleting}
+                className="px-4 py-2 text-white/60 hover:text-white text-sm rounded-lg hover:bg-white/5 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Credits Modal */}
       {addCreditsModal && (
