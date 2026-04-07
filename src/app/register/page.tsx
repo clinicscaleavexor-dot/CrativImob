@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Home, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Suspense } from "react";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const planSlug = searchParams.get("plan");
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -59,8 +62,11 @@ export default function RegisterPage() {
     setSuccess(true);
     setLoading(false);
 
-    // Redireciona direto para o dashboard (Supabase auto-confirm em dev)
-    setTimeout(() => router.push("/dashboard"), 1500);
+    // Redirect to plan checkout if plan was selected, otherwise to dashboard
+    const redirectTo = planSlug && planSlug !== "free"
+      ? `/dashboard/plano?plan=${encodeURIComponent(planSlug)}`
+      : "/dashboard";
+    setTimeout(() => router.push(redirectTo), 1500);
   }
 
   if (success) {
@@ -194,5 +200,17 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#060b14] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-white/50" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

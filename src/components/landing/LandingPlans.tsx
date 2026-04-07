@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Zap,
@@ -11,15 +10,71 @@ import {
   CheckCircle,
 } from "lucide-react";
 
-interface Plan {
-  id: string;
+interface PlanCard {
   slug: string;
   name: string;
-  price_cents: number;
-  credits_per_month: number;
-  max_properties: number;
+  price: string;
+  credits: number;
   features: string[];
 }
+
+const PLANS: PlanCard[] = [
+  {
+    slug: "free",
+    name: "Free",
+    price: "Grátis",
+    credits: 5,
+    features: [
+      "5 créditos/mês",
+      "Pode criar 5 artes por mês",
+      "Download das imagens",
+    ],
+  },
+  {
+    slug: "start",
+    name: "Start",
+    price: "R$ 39,90",
+    credits: 15,
+    features: [
+      "15 créditos por mês",
+      "Pode criar 15 artes por mês",
+      "Download das imagens",
+    ],
+  },
+  {
+    slug: "intermedium",
+    name: "Intermedium",
+    price: "R$ 59,90",
+    credits: 30,
+    features: [
+      "30 créditos por mês",
+      "Pode criar 30 artes por mês",
+      "Download das imagens",
+    ],
+  },
+  {
+    slug: "gold",
+    name: "Gold",
+    price: "R$ 99,90",
+    credits: 50,
+    features: [
+      "50 créditos por mês",
+      "Pode criar 50 artes por mês",
+      "Download das imagens",
+    ],
+  },
+  {
+    slug: "diamante",
+    name: "Diamante",
+    price: "R$ 129,90",
+    credits: 100,
+    features: [
+      "100 créditos por mês",
+      "Pode criar 100 artes por mês",
+      "Download das imagens",
+    ],
+  },
+];
 
 const PLAN_META: Record<
   string,
@@ -79,29 +134,15 @@ const PLAN_META: Record<
 };
 
 export default function LandingPlans() {
-  const [plans, setPlans] = useState<Plan[]>([]);
-
-  useEffect(() => {
-    fetch("/api/plans")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setPlans(data);
-      })
-      .catch(() => {});
-  }, []);
-
-  if (plans.length === 0) return null;
-
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 max-w-6xl mx-auto">
-      {plans.map((plan) => {
-        const slug = plan.slug ?? "free";
-        const meta = PLAN_META[slug] ?? PLAN_META.free;
-        const isPopular = slug === "gold";
+      {PLANS.map((plan) => {
+        const meta = PLAN_META[plan.slug] ?? PLAN_META.free;
+        const isPopular = plan.slug === "gold";
 
         return (
           <div
-            key={plan.id}
+            key={plan.slug}
             className={`relative p-6 rounded-2xl border flex flex-col transition-all ${meta.border} ${
               isPopular ? "ring-1 ring-yellow-500/30 scale-[1.02]" : ""
             }`}
@@ -124,42 +165,17 @@ export default function LandingPlans() {
             </div>
 
             <div className="mb-5">
-              {plan.price_cents === 0 ? (
-                <p className="text-3xl font-black text-white">Grátis</p>
+              {plan.slug === "free" ? (
+                <p className="text-3xl font-black text-white">{plan.price}</p>
               ) : (
                 <>
-                  <p className="text-3xl font-black text-white">
-                    R${" "}
-                    {(plan.price_cents / 100).toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </p>
+                  <p className="text-3xl font-black text-white">{plan.price}</p>
                   <p className="text-white/30 text-sm">/mês</p>
                 </>
               )}
             </div>
 
             <ul className="space-y-2 mb-6 flex-1">
-              <li className="flex items-center gap-2 text-sm">
-                <CheckCircle
-                  className={`w-4 h-4 flex-shrink-0 ${meta.accent}`}
-                />
-                <span className="text-white/60">
-                  {plan.credits_per_month >= 999
-                    ? "Créditos ilimitados"
-                    : `${plan.credits_per_month} créditos/mês`}
-                </span>
-              </li>
-              <li className="flex items-center gap-2 text-sm">
-                <CheckCircle
-                  className={`w-4 h-4 flex-shrink-0 ${meta.accent}`}
-                />
-                <span className="text-white/60">
-                  {plan.max_properties === -1
-                    ? "Imóveis ilimitados"
-                    : `Até ${plan.max_properties} imóveis`}
-                </span>
-              </li>
               {plan.features.map((f) => (
                 <li key={f} className="flex items-center gap-2 text-sm">
                   <CheckCircle
@@ -171,7 +187,7 @@ export default function LandingPlans() {
             </ul>
 
             <Link
-              href={`/register?plan=${slug}`}
+              href={`/register?plan=${plan.slug}`}
               className="block text-center py-3 rounded-xl font-black text-sm transition-all hover:scale-105"
               style={meta.ctaStyle}
             >

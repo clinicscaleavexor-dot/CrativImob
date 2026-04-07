@@ -156,7 +156,7 @@ export default function LandingPage() {
                 {/* The hero creative card */}
                 <div className="hero-card grain relative rounded-3xl overflow-hidden shadow-2xl" style={{width:"clamp(300px,40vw,440px)",aspectRatio:"1/1",boxShadow:"0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)"}}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src="/examples/criativo-a89ebf9b-65ce-4f7f-b090-d5b0d8b9b581.png" alt="Criativo gerado por IA" className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(2,5,16,0.25) 0%, rgba(2,5,16,0.1) 35%, rgba(2,5,16,0.55) 60%, rgba(2,5,16,0.97) 100%)"}} />
                   {/* AD CONTENT */}
                   <div className="absolute inset-0 p-5 flex flex-col justify-between z-10">
@@ -236,7 +236,7 @@ export default function LandingPage() {
             {/* Card 1: Luxury Lançamento */}
             <div className="card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/examples/criativo-1-img.png" alt="Criativo gerado por IA" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(4,8,20,0.3) 0%, rgba(4,8,20,0.15) 30%, rgba(4,8,20,0.7) 60%, rgba(4,8,20,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
@@ -263,7 +263,7 @@ export default function LandingPage() {
             {/* Card 2: Beach Terrenos */}
             <div className="card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/examples/criativo-85722b7e-e0cc-4f8a-b481-540911dcaa5c.png" alt="Criativo gerado por IA" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(5,20,30,0.2) 0%, rgba(5,20,30,0.1) 25%, rgba(15,10,5,0.65) 60%, rgba(15,10,5,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
@@ -292,7 +292,7 @@ export default function LandingPage() {
             {/* Card 3: Saia do Aluguel */}
             <div className="card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1574362848149-11496d93a7c7?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/examples/criativo-a6bb03ef-14df-4bf0-9876-b756fa7501ce.png" alt="Criativo gerado por IA" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(2,15,6,0.25) 0%, rgba(2,15,6,0.1) 25%, rgba(2,15,6,0.7) 60%, rgba(2,15,6,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
@@ -328,7 +328,7 @@ export default function LandingPage() {
             {/* Card 4: Stories - Investimento */}
             <div className="col-span-12 sm:col-span-4 md:col-span-3 card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "9/16" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/examples/criativo-b41a2908-b202-4bf0-9ffe-81a72d657256.png" alt="Criativo gerado por IA" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(30,10,0,0.3) 0%, rgba(30,10,0,0.15) 30%, rgba(10,5,0,0.75) 60%, rgba(10,5,0,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
@@ -355,7 +355,7 @@ export default function LandingPage() {
             {/* Card 5: Banner 16:9 Comercial */}
             <div className="col-span-12 sm:col-span-8 md:col-span-5 card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/examples/criativo-daa33e11-d482-4630-aedc-10027964a1bd.png" alt="Criativo gerado por IA" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(2,4,8,0.35) 0%, rgba(2,4,8,0.15) 25%, rgba(2,4,8,0.7) 60%, rgba(2,4,8,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
@@ -386,7 +386,7 @@ export default function LandingPage() {
             {/* Card 6: Beach Resort */}
             <div className="col-span-12 sm:col-span-12 md:col-span-4 card-hover relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=600&q=80" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/examples/criativo-1-a89ebf9b-65ce-4f7f-b090-d5b0d8b9b581.png" alt="Criativo gerado por IA" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0" style={{background:"linear-gradient(to bottom, rgba(4,15,14,0.2) 0%, rgba(4,15,14,0.1) 25%, rgba(4,15,14,0.65) 60%, rgba(4,15,14,0.97) 100%)"}} />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="flex items-start justify-between">

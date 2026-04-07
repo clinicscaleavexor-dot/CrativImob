@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Zap,
   CheckCircle2,
@@ -53,9 +53,21 @@ interface PlanoClientProps {
 
 export default function PlanoClient({ plans, subscription, credits }: PlanoClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
   const [canceling, setCanceling] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+
+  // Auto-open checkout if ?plan= query param is present (from registration flow)
+  useEffect(() => {
+    const planSlug = searchParams.get("plan");
+    if (planSlug && !checkoutPlan) {
+      const targetPlan = plans.find((p) => p.slug === planSlug);
+      if (targetPlan && targetPlan.price_cents > 0) {
+        setCheckoutPlan(targetPlan);
+      }
+    }
+  }, [searchParams, plans, checkoutPlan]);
 
   const currentPlan = plans.find((p) => p.id === subscription?.plan_id);
   const hasActiveSubscription = subscription && ["active", "pending"].includes(subscription.status);
