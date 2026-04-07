@@ -43,6 +43,7 @@ interface GenerateCreativeResponse {
   generated_copy?: string | null;
   status?: string;
   error?: string;
+  dbError?: { message?: string; code?: string; details?: string } | null;
 }
 
 const FORMATS = [
