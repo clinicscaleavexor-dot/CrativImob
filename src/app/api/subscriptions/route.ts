@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if payment link exists for this plan
-    const paymentLink = PLAN_PAYMENT_LINKS[plan.slug];
+    const paymentLink = PLAN_PAYMENT_LINKS[plan.slug as string];
     if (!paymentLink) {
       return NextResponse.json(
         { error: "Link de pagamento não configurado para este plano" },
