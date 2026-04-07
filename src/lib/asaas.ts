@@ -63,7 +63,7 @@ export async function findCustomerByEmail(email: string): Promise<AsaasCustomer 
 
 export async function createSubscription(data: {
   customer: string;
-  billingType: "BOLETO" | "CREDIT_CARD" | "PIX";
+  billingType: "BOLETO" | "CREDIT_CARD" | "PIX" | "UNDEFINED";
   value: number;
   nextDueDate: string;
   cycle: "MONTHLY";
@@ -80,9 +80,24 @@ export async function getSubscription(subscriptionId: string): Promise<AsaasSubs
   return asaasFetch<AsaasSubscription>(`/subscriptions/${subscriptionId}`);
 }
 
+interface AsaasPayment {
+  id: string;
+  status: string;
+  invoiceUrl: string;
+  bankSlipUrl?: string;
+  value: number;
+  dueDate: string;
+  externalReference?: string;
+}
+
+export async function getSubscriptionPayments(subscriptionId: string): Promise<AsaasPayment[]> {
+  const res = await asaasFetch<{ data: AsaasPayment[] }>(`/subscriptions/${subscriptionId}/payments`);
+  return res.data ?? [];
+}
+
 export async function updateSubscription(
   subscriptionId: string,
-  data: { value?: number; nextDueDate?: string; billingType?: string }
+  data: { value?: number; nextDueDate?: string; billingType?: string; externalReference?: string }
 ): Promise<AsaasSubscription> {
   return asaasFetch<AsaasSubscription>(`/subscriptions/${subscriptionId}`, {
     method: "PUT",

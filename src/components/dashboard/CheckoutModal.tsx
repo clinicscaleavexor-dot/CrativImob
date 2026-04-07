@@ -3,14 +3,12 @@
 import { useState } from "react";
 import {
   X,
-  CreditCard,
   Loader2,
-  QrCode,
-  FileText,
   Zap,
   CheckCircle2,
   ShieldCheck,
   Lock,
+  ExternalLink,
 } from "lucide-react";
 
 interface Plan {
@@ -29,17 +27,11 @@ interface CheckoutModalProps {
   onSuccess: () => void;
 }
 
-const BILLING_TYPES = [
-  { value: "PIX", label: "PIX", icon: QrCode, desc: "Aprovação imediata", badge: "Recomendado" },
-  { value: "BOLETO", label: "Boleto", icon: FileText, desc: "Até 3 dias úteis", badge: null },
-] as const;
-
 export default function CheckoutModal({ plan, onClose, onSuccess }: CheckoutModalProps) {
   const [cpfCnpj, setCpfCnpj] = useState("");
-  const [billingType, setBillingType] = useState<string>("PIX");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const price = (plan.price_cents / 100).toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
@@ -75,7 +67,7 @@ export default function CheckoutModal({ plan, onClose, onSuccess }: CheckoutModa
       const res = await fetch("/api/subscriptions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, cpfCnpj: digits, billingType }),
+        body: JSON.stringify({ planId: plan.id, cpfCnpj: digits }),
       });
 
       const data = await res.json();
@@ -84,8 +76,18 @@ export default function CheckoutModal({ plan, onClose, onSuccess }: CheckoutModa
         return;
       }
 
-      setSuccess(true);
-      setTimeout(onSuccess, 1800);
+      // Redirect to Asaas payment page
+      if (data.invoiceUrl) {
+        setRedirecting(true);
+        window.open(data.invoiceUrl, "_blank");
+        // Show success after redirect
+        setTimeout(() => {
+          onSuccess();
+        }, 2000);
+      } else {
+        // No invoiceUrl — still created, show success
+        onSuccess();
+      }
     } catch {
       setError("Erro de conexão. Verifique sua internet e tente novamente.");
     } finally {
@@ -93,20 +95,26 @@ export default function CheckoutModal({ plan, onClose, onSuccess }: CheckoutModa
     }
   }
 
-  /* ─── Success state ─── */
-  if (success) {
+  /* ─── Redirecting state ─── */
+  if (redirecting) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
         <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-4">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+          <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mb-4">
+            <ExternalLink className="w-8 h-8 text-brand-500" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Assinatura criada!</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Redirecionando para pagamento</h2>
           <p className="text-gray-500 text-sm">
-            Seu plano <span className="font-semibold text-gray-700">{plan.name}</span> está ativo.
-            Redirecionando...
+            Uma nova aba foi aberta com a página de pagamento do Asaas.
+            Após concluir o pagamento, seus créditos serão liberados automaticamente.
           </p>
+          <button
+            onClick={onSuccess}
+            className="mt-4 text-sm text-brand-500 hover:text-brand-600 font-medium"
+          >
+            Fechar e voltar
+          </button>
         </div>
       </div>
     );
@@ -176,36 +184,12 @@ export default function CheckoutModal({ plan, onClose, onSuccess }: CheckoutModa
             />
           </div>
 
-          {/* Billing type */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Forma de pagamento
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {BILLING_TYPES.map(({ value, label, icon: Icon, desc, badge }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setBillingType(value)}
-                  className={`relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl border-2 transition-all text-center ${
-                    billingType === value
-                      ? "border-brand-500 bg-brand-50 text-brand-600"
-                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  {badge && (
-                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-full font-semibold whitespace-nowrap">
-                      {badge}
-                    </span>
-                  )}
-                  <Icon className="w-5 h-5" />
-                  <span className="text-xs font-semibold">{label}</span>
-                  <span className={`text-[10px] ${billingType === value ? "text-brand-400" : "text-gray-400"}`}>
-                    {desc}
-                  </span>
-                </button>
-              ))}
-            </div>
+          {/* Info about payment */}
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-blue-700">
+              Você será redirecionado para a página de pagamento segura do Asaas, 
+              onde poderá escolher entre PIX, Boleto ou Cartão de Crédito.
+            </p>
           </div>
 
           {/* Order summary */}
@@ -251,12 +235,12 @@ export default function CheckoutModal({ plan, onClose, onSuccess }: CheckoutModa
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Processando pagamento...
+                Criando assinatura...
               </>
             ) : (
               <>
                 <Lock className="w-4 h-4" />
-                Confirmar assinatura · R$ {price}
+                Ir para pagamento · R$ {price}
               </>
             )}
           </button>

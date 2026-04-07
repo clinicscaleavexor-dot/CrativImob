@@ -294,6 +294,7 @@ export type Database = {
           current_period_end: string
           current_period_start: string
           external_subscription_id: string | null
+          external_reference: string | null
           id: string
           plan_id: string
           status: string
@@ -304,6 +305,7 @@ export type Database = {
           current_period_end?: string
           current_period_start?: string
           external_subscription_id?: string | null
+          external_reference?: string | null
           id?: string
           plan_id: string
           status?: string
@@ -314,6 +316,7 @@ export type Database = {
           current_period_end?: string
           current_period_start?: string
           external_subscription_id?: string | null
+          external_reference?: string | null
           id?: string
           plan_id?: string
           status?: string

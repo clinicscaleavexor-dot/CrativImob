@@ -3,6 +3,16 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 const WEBHOOK_TOKEN = process.env.ASAAS_WEBHOOK_TOKEN;
 
+/**
+ * Parse externalReference format: "user_{USER_ID}_plan_{SLUG}"
+ */
+function parseExternalReference(ref: string | undefined | null): { userId: string; planSlug: string } | null {
+  if (!ref) return null;
+  const match = ref.match(/^user_(.+)_plan_(.+)$/);
+  if (!match) return null;
+  return { userId: match[1], planSlug: match[2] };
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Verify webhook token if configured
@@ -21,20 +31,65 @@ export async function POST(req: NextRequest) {
     switch (event) {
       case "PAYMENT_CONFIRMED":
       case "PAYMENT_RECEIVED": {
-        // Activate subscription on first payment
-        const externalSubId = payment?.subscription;
-        if (!externalSubId) break;
+        // Try externalReference first, fall back to subscription ID lookup
+        const extRef = payment?.externalReference;
+        const parsed = parseExternalReference(extRef);
 
-        const { data: sub } = await serviceClient
-          .from("subscriptions")
-          .select("id, user_id, plan_id, status")
-          .eq("external_subscription_id", externalSubId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        let userId: string | null = null;
+        let planId: string | null = null;
+        let subId: string | null = null;
 
-        if (sub) {
-          // Update subscription to active
+        if (parsed) {
+          // Resolve plan from slug
+          const { data: plan } = await serviceClient
+            .from("plans")
+            .select("id, credits_per_month")
+            .eq("slug", parsed.planSlug)
+            .eq("is_active", true)
+            .single();
+
+          if (plan) {
+            userId = parsed.userId;
+            planId = plan.id;
+
+            // Find the local subscription record
+            const { data: sub } = await serviceClient
+              .from("subscriptions")
+              .select("id")
+              .eq("user_id", userId)
+              .eq("external_reference", extRef)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            subId = sub?.id ?? null;
+          }
+        }
+
+        // Fallback: look up by external_subscription_id
+        if (!userId && payment?.subscription) {
+          const { data: sub } = await serviceClient
+            .from("subscriptions")
+            .select("id, user_id, plan_id")
+            .eq("external_subscription_id", payment.subscription)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (sub) {
+            userId = sub.user_id;
+            planId = sub.plan_id;
+            subId = sub.id;
+          }
+        }
+
+        if (!userId || !planId) {
+          console.error("Webhook: could not identify user for payment", payment?.id);
+          break;
+        }
+
+        // Activate subscription
+        if (subId) {
           const periodEnd = new Date();
           periodEnd.setDate(periodEnd.getDate() + 30);
 
@@ -45,56 +100,63 @@ export async function POST(req: NextRequest) {
               current_period_start: new Date().toISOString(),
               current_period_end: periodEnd.toISOString(),
             })
-            .eq("id", sub.id);
+            .eq("id", subId);
+        }
 
-          // Grant/refresh credits on every confirmed payment (first activation + renewals)
-          const { data: plan } = await serviceClient
-            .from("plans")
-            .select("credits_per_month")
-            .eq("id", sub.plan_id)
-            .single();
+        // Grant credits
+        const { data: plan } = await serviceClient
+          .from("plans")
+          .select("credits_per_month")
+          .eq("id", planId)
+          .single();
 
-          if (plan) {
+        if (plan) {
+          await serviceClient
+            .from("credits")
+            .upsert(
+              { user_id: userId, balance: plan.credits_per_month },
+              { onConflict: "user_id" }
+            );
+
+          try {
             await serviceClient
-              .from("credits")
-              .upsert(
-                { user_id: sub.user_id, balance: plan.credits_per_month },
-                { onConflict: "user_id" }
-              );
-
-            // Log credit transaction
-            try {
-              await serviceClient
-                .from("credits_transactions")
-                .insert({
-                  user_id: sub.user_id,
-                  amount: plan.credits_per_month,
-                  type: "grant",
-                  description: `Créditos do plano - pagamento ${payment?.id || "unknown"}`,
-                });
-            } catch (err) {
-              console.error("Failed to log credit transaction:", err);
-            }
-
-            // Also ensure profile has the correct plan_id
-            await serviceClient
-              .from("profiles")
-              .update({ plan_id: sub.plan_id })
-              .eq("id", sub.user_id);
+              .from("credits_transactions")
+              .insert({
+                user_id: userId,
+                amount: plan.credits_per_month,
+                type: "grant",
+                description: `Créditos do plano - pagamento ${payment?.id || "unknown"}`,
+              });
+          } catch (err) {
+            console.error("Failed to log credit transaction:", err);
           }
+
+          await serviceClient
+            .from("profiles")
+            .update({ plan_id: planId })
+            .eq("id", userId);
         }
         break;
       }
 
       case "PAYMENT_OVERDUE": {
+        const extRef = payment?.externalReference;
+        const parsed = parseExternalReference(extRef);
         const externalSubId = payment?.subscription;
-        if (!externalSubId) break;
 
-        await serviceClient
-          .from("subscriptions")
-          .update({ status: "overdue" })
-          .eq("external_subscription_id", externalSubId)
-          .in("status", ["active", "pending"]);
+        if (parsed) {
+          await serviceClient
+            .from("subscriptions")
+            .update({ status: "overdue" })
+            .eq("external_reference", extRef)
+            .in("status", ["active", "pending"]);
+        } else if (externalSubId) {
+          await serviceClient
+            .from("subscriptions")
+            .update({ status: "overdue" })
+            .eq("external_subscription_id", externalSubId)
+            .in("status", ["active", "pending"]);
+        }
         break;
       }
 

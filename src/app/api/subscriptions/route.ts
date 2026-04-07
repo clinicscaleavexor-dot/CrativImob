@@ -5,6 +5,7 @@ import {
   createCustomer,
   findCustomerByEmail,
   createSubscription,
+  getSubscriptionPayments,
 } from "@/lib/asaas";
 
 export async function POST(req: NextRequest) {
@@ -18,11 +19,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const { planId, cpfCnpj, billingType } = await req.json();
+    const { planId, cpfCnpj } = await req.json();
 
-    if (!planId || !cpfCnpj || !billingType) {
+    if (!planId || !cpfCnpj) {
       return NextResponse.json(
-        { error: "planId, cpfCnpj e billingType são obrigatórios" },
+        { error: "planId e cpfCnpj são obrigatórios" },
         { status: 400 }
       );
     }
@@ -58,7 +59,6 @@ export async function POST(req: NextRequest) {
     let asaasCustomerId = profile?.asaas_customer_id;
 
     if (!asaasCustomerId) {
-      // Try to find existing customer by email
       const existing = await findCustomerByEmail(user.email!);
       if (existing) {
         asaasCustomerId = existing.id;
@@ -87,16 +87,30 @@ export async function POST(req: NextRequest) {
     nextDueDate.setDate(nextDueDate.getDate() + 1);
     const dueDateStr = nextDueDate.toISOString().split("T")[0];
 
-    // Create subscription in Asaas
+    // Build externalReference: "user_{USER_ID}_plan_{SLUG}"
+    const externalReference = `user_${user.id}_plan_${plan.slug}`;
+
+    // Create subscription in Asaas with billingType UNDEFINED
     const asaasSub = await createSubscription({
       customer: asaasCustomerId,
-      billingType: billingType as "BOLETO" | "CREDIT_CARD" | "PIX",
+      billingType: "UNDEFINED",
       value: plan.price_cents / 100,
       nextDueDate: dueDateStr,
       cycle: "MONTHLY",
       description: `CrativImob - Plano ${plan.name}`,
-      externalReference: user.id,
+      externalReference,
     });
+
+    // Fetch first payment to get invoiceUrl
+    let invoiceUrl: string | null = null;
+    try {
+      const payments = await getSubscriptionPayments(asaasSub.id);
+      if (payments.length > 0) {
+        invoiceUrl = payments[0].invoiceUrl;
+      }
+    } catch (err) {
+      console.error("Failed to fetch invoiceUrl:", err);
+    }
 
     // Calculate period end (30 days from now)
     const periodEnd = new Date();
@@ -117,6 +131,7 @@ export async function POST(req: NextRequest) {
         plan_id: planId,
         status: "pending",
         external_subscription_id: asaasSub.id,
+        external_reference: externalReference,
         current_period_start: new Date().toISOString(),
         current_period_end: periodEnd.toISOString(),
       });
@@ -138,6 +153,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       subscriptionId: asaasSub.id,
+      invoiceUrl,
       status: asaasSub.status,
     });
   } catch (error) {

@@ -50,15 +50,22 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Update subscription value in Asaas
+    // Build new externalReference
+    const externalReference = `user_${user.id}_plan_${newPlan.slug}`;
+
+    // Update subscription in Asaas (value + externalReference)
     await updateSubscription(currentSub.external_subscription_id, {
       value: newPlan.price_cents / 100,
+      externalReference,
     });
 
     // Update local subscription
     await serviceClient
       .from("subscriptions")
-      .update({ plan_id: planId })
+      .update({
+        plan_id: planId,
+        external_reference: externalReference,
+      })
       .eq("id", currentSub.id);
 
     // Update profile plan_id
