@@ -216,7 +216,7 @@ export default function CriarPage() {
           .map((img) => ({ base64: img.base64, mime_type: img.mimeType })),
         format: selectedFormat,
         model: selectedModel,
-        creative_type: "post",
+        creative_type: "post_instagram",
         headline,
         copy_text: copyText,
         cta_text: ctaText,
@@ -241,7 +241,8 @@ export default function CriarPage() {
       if (data?.generated_copy) setGeneratedCopy(data.generated_copy);
 
       if (!res.ok) {
-        setGenError(data?.error ?? `Erro HTTP ${res.status}`);
+        const dbErr = data?.dbError?.message ? ` (DB: ${data.dbError.message})` : "";
+        setGenError((data?.error ?? `Erro HTTP ${res.status}`) + dbErr);
         return;
       }
 

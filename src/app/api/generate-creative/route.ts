@@ -352,6 +352,7 @@ export async function POST(request: NextRequest) {
       const imageUrls: (string | null)[] = [];
       const creativeIds: string[] = [];
       const modelUsed = aiModelUsed ?? PRIMARY_FLASH_MODEL;
+      let lastInsertError: unknown = null;
 
       const allImages: { base64: string | null; isMockup: boolean }[] = [
         { base64: aiImage, isMockup: false },
@@ -376,7 +377,7 @@ export async function POST(request: NextRequest) {
             property_id: null,
             template_id: null,
             format,
-            type: creative_type ?? "post",
+            type: creative_type ?? "post_instagram",
             status: imageUrl ? "completed" : "failed",
             title: property_info ? (property_info as string).slice(0, 80) : `Criativo ${format}`,
             headline: headline ?? "",
@@ -402,6 +403,7 @@ export async function POST(request: NextRequest) {
 
         const creative = creativeRaw as CreativeId | null;
         if (createError) {
+          lastInsertError = createError;
           console.error("[creatives] insert failed (new-flow):", JSON.stringify({
             message: createError.message,
             code: createError.code,
@@ -416,8 +418,17 @@ export async function POST(request: NextRequest) {
       // If NO creatives were saved, return error
       if (creativeIds.length === 0) {
         console.error('[creatives] ALL inserts failed in new-flow. No creatives saved.');
+        const errObj = lastInsertError as { message?: string; code?: string; details?: string; hint?: string } | null;
         return NextResponse.json(
-          { error: 'Falha ao salvar criativos no banco de dados. Nenhum criativo foi persistido.' },
+          {
+            error: 'Falha ao salvar criativos no banco de dados. Nenhum criativo foi persistido.',
+            dbError: errObj ? {
+              message: errObj.message,
+              code: errObj.code,
+              details: errObj.details,
+              hint: errObj.hint,
+            } : null,
+          },
           { status: 500 }
         );
       }
@@ -585,7 +596,7 @@ export async function POST(request: NextRequest) {
           property_id: property_id ?? null,
           template_id: null,
           format,
-          type: creative_type ?? "post",
+          type: creative_type ?? "post_instagram",
           status: imageUrl ? "completed" : "failed",
           headline: headline ?? "",
           copy_text: copy_text ?? "",
