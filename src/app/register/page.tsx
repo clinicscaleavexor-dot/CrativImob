@@ -36,25 +36,40 @@ function RegisterForm() {
     }
 
     setLoading(true);
-    const supabase = createClient();
 
-    const { error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
-          full_name: form.fullName,
-          company_name: form.companyName || null,
-        },
-      },
+    // Create account via server-side API (bypasses email confirmation requirement)
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password,
+        fullName: form.fullName,
+        companyName: form.companyName || undefined,
+      }),
     });
 
-    if (error) {
-      if (error.message.includes("already registered")) {
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (data.error === "email_exists") {
         setError("Este e-mail já está cadastrado. Tente fazer login.");
       } else {
-        setError("Erro ao criar conta. Tente novamente.");
+        setError(data.error || "Erro ao criar conta. Tente novamente.");
       }
+      setLoading(false);
+      return;
+    }
+
+    // Sign in immediately after account creation
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    });
+
+    if (signInError) {
+      setError("Conta criada, mas não foi possível entrar automaticamente. Faça login.");
       setLoading(false);
       return;
     }
