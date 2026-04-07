@@ -1,5 +1,5 @@
 const ASAAS_API_KEY = process.env.ASAAS_API_KEY!;
-const ASAAS_BASE_URL = process.env.ASAAS_BASE_URL || "https://sandbox.asaas.com/api/v3";
+const ASAAS_BASE_URL = process.env.ASAAS_BASE_URL || "https://api-sandbox.asaas.com/v3";
 
 interface AsaasCustomer {
   id: string;
@@ -31,7 +31,14 @@ async function asaasFetch<T>(path: string, options: RequestInit = {}): Promise<T
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Asaas API error ${res.status}: ${body}`);
+    let detail = body;
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed.errors?.length) {
+        detail = parsed.errors.map((e: { description?: string; code?: string }) => e.description || e.code).join("; ");
+      }
+    } catch { /* keep raw body */ }
+    throw new Error(`Asaas API error ${res.status}: ${detail}`);
   }
 
   return res.json();

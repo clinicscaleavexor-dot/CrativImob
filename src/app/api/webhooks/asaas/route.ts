@@ -62,6 +62,20 @@ export async function POST(req: NextRequest) {
                 { onConflict: "user_id" }
               );
 
+            // Log credit transaction
+            try {
+              await serviceClient
+                .from("credits_transactions")
+                .insert({
+                  user_id: sub.user_id,
+                  amount: plan.credits_per_month,
+                  type: "grant",
+                  description: `Créditos do plano - pagamento ${payment?.id || "unknown"}`,
+                });
+            } catch (err) {
+              console.error("Failed to log credit transaction:", err);
+            }
+
             // Also ensure profile has the correct plan_id
             await serviceClient
               .from("profiles")

@@ -141,9 +141,10 @@ export async function POST(req: NextRequest) {
       status: asaasSub.status,
     });
   } catch (error) {
-    console.error("Subscription error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Subscription error:", message);
     return NextResponse.json(
-      { error: "Erro interno ao criar assinatura" },
+      { error: `Erro ao criar assinatura: ${message}` },
       { status: 500 }
     );
   }
