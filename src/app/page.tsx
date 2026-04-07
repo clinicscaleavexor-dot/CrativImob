@@ -9,6 +9,7 @@ import {
   Share2,
   Sparkles,
 } from "lucide-react";
+import LandingPlans from "@/components/landing/LandingPlans";
 
 export default function LandingPage() {
   return (
@@ -485,45 +486,12 @@ export default function LandingPage() {
       {/* ── PLANOS ── */}
       <section id="planos" className="py-24 px-6 relative overflow-hidden">
         <div className="absolute inset-0" style={{background:"rgba(255,255,255,0.012)",borderTop:"1px solid rgba(255,255,255,0.05)",borderBottom:"1px solid rgba(255,255,255,0.05)"}} />
-        <div className="relative max-w-4xl mx-auto">
+        <div className="relative max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="font-black tracking-tighter mb-4" style={{fontSize:"clamp(2rem,4.5vw,3.2rem)"}}>Planos simples</h2>
             <p className="text-white/35 text-lg">Comece grátis. Escale quando precisar.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              {name:"Free",  price:"Grátis", period:"",     desc:"Para começar a explorar",     features:["5 criativos/mês","3 imóveis","Templates básicos"],                                                              cta:"Começar grátis", highlighted:false},
-              {name:"Basic", price:"R$19",   period:"/mês", desc:"Para corretores individuais", features:["30 criativos/mês","20 imóveis","Todos os templates","Download HD","Histórico completo"],                       cta:"Assinar Basic",  highlighted:true},
-              {name:"Pro",   price:"R$49",   period:"/mês", desc:"Para equipes e imobiliárias", features:["Criativos ilimitados","Imóveis ilimitados","Variações automáticas","IA prioritária","Envio por WhatsApp"], cta:"Assinar Pro",    highlighted:false},
-            ].map((plan) => (
-              <div key={plan.name} className="relative p-7 rounded-2xl border transition-all" style={plan.highlighted ? {background:"rgba(37,99,235,0.07)",borderColor:"rgba(37,99,235,0.35)",boxShadow:"0 20px 60px rgba(37,99,235,0.12)"} : {background:"rgba(255,255,255,0.022)",borderColor:"rgba(255,255,255,0.06)"}}>
-                {plan.highlighted && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-xs font-black text-white px-3 py-1 rounded-full shadow-lg" style={{background:"linear-gradient(135deg,#2563eb,#1d4ed8)"}}>
-                    Mais popular
-                  </div>
-                )}
-                <div className="mb-6">
-                  <p className="text-xs font-black uppercase tracking-widest text-white/35 mb-0.5">{plan.name}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black">{plan.price}</span>
-                    <span className="text-white/30 text-sm">{plan.period}</span>
-                  </div>
-                  <p className="text-white/30 text-xs mt-1">{plan.desc}</p>
-                </div>
-                <ul className="space-y-2.5 mb-7">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 flex-shrink-0" style={{color: plan.highlighted ? "#60a5fa" : "rgba(255,255,255,0.25)"}} />
-                      <span className="text-white/60">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/register" className="block text-center py-3.5 rounded-xl font-black text-sm transition-all hover:scale-105" style={plan.highlighted ? {background:"linear-gradient(135deg,#2563eb,#1d4ed8)",color:"#fff",boxShadow:"0 8px 24px rgba(37,99,235,0.35)"} : {background:"rgba(255,255,255,0.06)",color:"#fff"}}>
-                  {plan.cta}
-                </Link>
-              </div>
-            ))}
-          </div>
+          <LandingPlans />
         </div>
       </section>
 

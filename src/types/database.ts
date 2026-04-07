@@ -136,6 +136,7 @@ export type Database = {
           max_properties: number
           name: string
           price_cents: number
+          slug: string | null
         }
         Insert: {
           created_at?: string
@@ -146,6 +147,7 @@ export type Database = {
           max_properties?: number
           name: string
           price_cents?: number
+          slug?: string | null
         }
         Update: {
           created_at?: string
@@ -156,17 +158,20 @@ export type Database = {
           max_properties?: number
           name?: string
           price_cents?: number
+          slug?: string | null
         }
         Relationships: []
       }
       profiles: {
         Row: {
+          asaas_customer_id: string | null
           avatar_url: string | null
           brand_colors: Json | null
           brand_personality: string | null
           company_description: string | null
           company_logo_url: string | null
           company_name: string | null
+          cpf_cnpj: string | null
           created_at: string
           creci: string | null
           full_name: string | null
@@ -178,12 +183,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          asaas_customer_id?: string | null
           avatar_url?: string | null
           brand_colors?: Json | null
           brand_personality?: string | null
           company_description?: string | null
           company_logo_url?: string | null
           company_name?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           creci?: string | null
           full_name?: string | null
@@ -195,12 +202,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          asaas_customer_id?: string | null
           avatar_url?: string | null
           brand_colors?: Json | null
           brand_personality?: string | null
           company_description?: string | null
           company_logo_url?: string | null
           company_name?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           creci?: string | null
           full_name?: string | null

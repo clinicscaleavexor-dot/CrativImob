@@ -31,6 +31,18 @@ export default async function DashboardLayout({
     .eq("user_id", user.id)
     .single();
 
+  // Check subscription status for access control
+  const { data: subRaw } = await supabase
+    .from("subscriptions")
+    .select("status")
+    .eq("user_id", user.id)
+    .in("status", ["active", "pending", "overdue"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const subscriptionStatus = (subRaw as { status: string } | null)?.status ?? null;
+
   const profileData = profileRaw as ProfileRow | null;
   const creditsData = creditsRaw as { balance: number } | null;
 
